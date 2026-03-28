@@ -52,6 +52,10 @@ PUBLISHERS = [
     {'label': 'Ubu',                  'search': 'Ubu Editora'},
     {'label': 'Bazar do Tempo',       'search': 'Bazar do Tempo'},
     {'label': 'Editora 34',           'search': 'Editora 34'},
+    {'label': 'Intrínseca',           'search': 'Intrinseca'},
+    {'label': 'Darkside',             'search': 'Darkside'},
+    {'label': 'Autêntica',            'search': 'Autentica'},
+    {'label': 'Arqueiro',             'search': 'Arqueiro'},
 ]
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
