@@ -381,7 +381,6 @@
     const books = filterBooks();
     const grid = document.getElementById('grid');
     setStatus(`${books.length} livro${books.length !== 1 ? 's' : ''}`);
-    const grid = document.getElementById('grid');
     if (!books.length) {
       grid.innerHTML = '<div class="empty">nenhum livro encontrado</div>';
       return;
