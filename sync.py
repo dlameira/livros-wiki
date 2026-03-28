@@ -41,15 +41,16 @@ PUBLISHER_FILTER  = os.environ.get('PUBLISHER_FILTER', '')     # ex: "Companhia 
 
 PUBLISHERS = [
     {'label': 'Companhia das Letras', 'search': 'Companhia das Letras'},
-    {'label': 'Intrínseca',           'search': 'Intrinseca'},
     {'label': 'Seiva',                'search': 'Seiva'},
     {'label': 'Rocco',                'search': 'Rocco'},
     {'label': 'Todavia',              'search': 'Todavia'},
     {'label': 'Fósforo',              'search': 'Fosforo Editora'},
-    {'label': 'Darkside',             'search': 'Darkside'},
-    {'label': 'Autêntica',            'search': 'Autentica'},
-    {'label': 'Arqueiro',             'search': 'Arqueiro'},
     {'label': 'Record',               'search': 'Record'},
+    {'label': 'Sextante',             'search': 'Sextante'},
+    {'label': 'Aleph',                'search': 'Aleph'},
+    {'label': 'Antofágica',           'search': 'Antofagica'},
+    {'label': 'Ubu',                  'search': 'Ubu Editora'},
+    {'label': 'Bazar do Tempo',       'search': 'Bazar do Tempo'},
 ]
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
