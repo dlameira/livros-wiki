@@ -75,10 +75,8 @@
 
     .cover-wrap img {
       width: 100%;
-      height: 100%;
+      height: auto;
       display: block;
-      object-fit: cover;
-      object-position: center top;
       opacity: 0;
       transition: opacity 0.35s;
     }
@@ -604,7 +602,40 @@
 
   function onCoverLoad(img) {
     img.style.opacity = '1';
+    // Libera o aspect-ratio reservado para que a altura natural tome conta
+    img.closest('.cover-wrap').style.aspectRatio = 'unset';
+    scheduleEqualize();
   }
+
+  let _eqTimer;
+  function scheduleEqualize() {
+    clearTimeout(_eqTimer);
+    _eqTimer = setTimeout(equalizeCoverRows, 100);
+  }
+
+  function equalizeCoverRows() {
+    const cards = [...document.querySelectorAll('#grid .book-card')];
+    if (!cards.length) return;
+    cards.forEach(c => { const w = c.querySelector('.cover-wrap'); if (w) w.style.height = ''; });
+    requestAnimationFrame(() => {
+      const rows = new Map();
+      cards.forEach(card => {
+        const top = card.offsetTop;
+        if (!rows.has(top)) rows.set(top, []);
+        rows.get(top).push(card);
+      });
+      rows.forEach(rowCards => {
+        const maxH = Math.max(...rowCards.map(c => {
+          const w = c.querySelector('.cover-wrap'); return w ? w.offsetHeight : 0;
+        }));
+        if (maxH > 0) rowCards.forEach(c => {
+          const w = c.querySelector('.cover-wrap'); if (w) w.style.height = maxH + 'px';
+        });
+      });
+    });
+  }
+
+  window.addEventListener('resize', scheduleEqualize);
 
   let _lazyObserver;
   function setupLazyLoad() {
