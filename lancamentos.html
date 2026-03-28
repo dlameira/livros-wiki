@@ -358,7 +358,14 @@
         headers: { Authorization: `Bearer ${DIRECTUS_TOKEN}` }
       });
       const j = await r.json();
-      allBooks = j.data || [];
+      const raw = j.data || [];
+      const seen = new Set();
+      allBooks = raw.filter(b => {
+        const key = (b.titulo || '').toLowerCase().trim();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
       buildFilters();
       renderGrid();
       setStatus(`${allBooks.length} lançamento${allBooks.length !== 1 ? 's' : ''} nos últimos 3 meses`);
