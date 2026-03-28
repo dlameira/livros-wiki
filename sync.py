@@ -34,7 +34,7 @@ META_TOKEN     = os.environ['META_TOKEN']
 META_BASE      = 'https://www.metabooks.com/api/v2'
 META_COVER_TOKEN = os.environ.get('META_COVER_TOKEN', '')
 PAGE_SIZE      = 40
-MONTHS_BACK    = 6  # janela de publicação para sincronizar
+MONTHS_BACK    = 12  # janela de publicação para sincronizar
 
 PUBLISHERS = [
     {'label': 'Companhia das Letras', 'search': 'Companhia das Letras'},

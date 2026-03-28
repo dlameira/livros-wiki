@@ -249,6 +249,35 @@
     .detail-sinopse p { margin-bottom: 12px; }
     .detail-sinopse p:last-child { margin-bottom: 0; }
 
+    /* ── FILTROS ── */
+    .filters {
+      padding: 24px 48px 0;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .pill {
+      padding: 5px 13px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      font-size: 0.78rem;
+      cursor: pointer;
+      background: transparent;
+      color: var(--muted);
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+
+    .pill:hover { border-color: #444; color: #aaa; }
+
+    .pill.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #0f0f0f;
+    }
+
     .detail-contributors {
       font-size: 0.78rem;
       color: #666;
@@ -281,6 +310,10 @@
   <p>livros das editoras selecionadas</p>
 </header>
 
+<div class="filters" id="filters">
+  <button class="pill active" data-pub="all" onclick="setFilter('all', this)">todos</button>
+</div>
+
 <div class="status" id="status"></div>
 
 <div class="grid" id="grid"></div>
@@ -302,16 +335,18 @@
   const DIRECTUS_TOKEN = '73IhvvuNMBy-et-_0Ore5ZH2jo25pnU5';
 
   let allBooks = [];
+  let currentFilter = 'all';
 
   async function init() {
     setStatus('carregando...');
     try {
       const r = await fetch(
-        `${DIRECTUS_URL}/items/biblioteca?limit=1000&sort=-data_publicacao&fields=id,isbn,titulo,autor,editora,capa_url,sinopse,biografia_autor,contributors,data_publicacao`,
+        `${DIRECTUS_URL}/items/biblioteca?limit=2000&sort=-data_publicacao&fields=id,isbn,titulo,autor,editora,capa_url,sinopse,biografia_autor,contributors,data_publicacao`,
         { headers: { Authorization: `Bearer ${DIRECTUS_TOKEN}` } }
       );
       const j = await r.json();
       allBooks = j.data || [];
+      buildFilters();
       renderGrid();
       setStatus(`${allBooks.length} livro${allBooks.length !== 1 ? 's' : ''}`);
     } catch(e) {
@@ -319,14 +354,36 @@
     }
   }
 
+  function buildFilters() {
+    const container = document.getElementById('filters');
+    container.innerHTML = '<button class="pill active" data-pub="all" onclick="setFilter(\'all\', this)">todos</button>';
+    const editoras = [...new Set(allBooks.map(b => b.editora).filter(Boolean))].sort();
+    editoras.forEach(ed => {
+      const btn = document.createElement('button');
+      btn.className = 'pill';
+      btn.textContent = ed;
+      btn.dataset.pub = ed;
+      btn.onclick = () => setFilter(ed, btn);
+      container.appendChild(btn);
+    });
+  }
+
+  function setFilter(pub, btn) {
+    currentFilter = pub;
+    document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    renderGrid();
+  }
+
   function renderGrid() {
+    const books = currentFilter === 'all' ? allBooks : allBooks.filter(b => b.editora === currentFilter);
     const grid = document.getElementById('grid');
-    if (!allBooks.length) {
+    if (!books.length) {
       grid.innerHTML = '<div class="empty">nenhum livro encontrado</div>';
       return;
     }
-    grid.innerHTML = allBooks.map((b, i) => `
-      <div class="book-card" onclick="openDetail(${i})">
+    grid.innerHTML = books.map((b) => `
+      <div class="book-card" onclick="openDetail(${b.id})">
         <div class="cover-wrap">
           ${b.capa_url
             ? `<img src="${escHtml(b.capa_url)}" alt="${escHtml(b.titulo)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=cover-placeholder>📖</div>'">`
@@ -339,8 +396,8 @@
     `).join('');
   }
 
-  function openDetail(index) {
-    const b = allBooks[index];
+  function openDetail(id) {
+    const b = allBooks.find(x => x.id === id);
     if (!b) return;
 
     document.getElementById('detail-cover').innerHTML = b.capa_url
