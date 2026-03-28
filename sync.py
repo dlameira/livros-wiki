@@ -138,11 +138,19 @@ for pub in PUBLISHERS:
                 break
 
             for b in items:
+                if b.get('productType') != 'pbook':
+                    continue
+
                 isbn = (b.get('gtin') or b.get('isbn') or '').replace('-', '').replace(' ', '')
                 if not isbn:
                     continue
 
                 pub_date = parse_date(b.get('publicationDate') or b.get('onSaleDate'))
+
+                contributors = [
+                    c for c in (b.get('contributors') or [])
+                    if c.get('firstName') or c.get('lastName') or c.get('groupName')
+                ]
 
                 payload = {
                     'isbn':            isbn,
@@ -151,6 +159,8 @@ for pub in PUBLISHERS:
                     'editora':         (b.get('publisher') or pub['label'])[:255],
                     'capa_url':        (f"{b['coverUrl']}?access_token={META_COVER_TOKEN}" if b.get('coverUrl') and META_COVER_TOKEN else b.get('coverUrl') or ''),
                     'sinopse':         strip_html(b.get('mainDescription') or b.get('shortDescription')),
+                    'biografia_autor': strip_html(b.get('biographicalNote')),
+                    'contributors':    contributors or None,
                     'data_publicacao': pub_date,
                 }
 

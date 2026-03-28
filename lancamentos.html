@@ -297,6 +297,30 @@
 
     .detail-sinopse p { margin-bottom: 12px; }
     .detail-sinopse p:last-child { margin-bottom: 0; }
+
+    .detail-contributors {
+      font-size: 0.78rem;
+      color: #666;
+      margin-bottom: 20px;
+    }
+    .contrib-role { color: #555; }
+
+    .detail-bio {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      font-size: 0.82rem;
+      line-height: 1.7;
+      color: #888;
+    }
+    .detail-bio-label {
+      display: block;
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #555;
+      margin-bottom: 8px;
+    }
   </style>
 </head>
 <body>
@@ -352,7 +376,7 @@
         + `?filter[data_publicacao][_gte]=${dateStr}`
         + `&sort=-data_publicacao`
         + `&limit=500`
-        + `&fields=id,isbn,titulo,autor,editora,capa_url,sinopse,data_publicacao,ano`;
+        + `&fields=id,isbn,titulo,autor,editora,capa_url,sinopse,biografia_autor,contributors,data_publicacao`;
 
       const r = await fetch(url, {
         headers: { Authorization: `Bearer ${DIRECTUS_TOKEN}` }
@@ -455,9 +479,15 @@
       </div>
     `;
 
-    document.getElementById('detail-body').innerHTML = b.sinopse
-      ? `<div class="detail-sinopse">${b.sinopse.split('\n').filter(Boolean).map(p => `<p>${escHtml(p)}</p>`).join('')}</div>`
-      : '<div class="detail-sinopse" style="color:#444">sinopse não disponível</div>';
+    const contribs = formatContributors(b.contributors);
+    document.getElementById('detail-body').innerHTML = `
+      ${contribs ? `<div class="detail-contributors">${contribs}</div>` : ''}
+      ${b.sinopse
+        ? `<div class="detail-sinopse">${b.sinopse.split('\n').filter(Boolean).map(p => `<p>${escHtml(p)}</p>`).join('')}</div>`
+        : '<div class="detail-sinopse" style="color:#444">sinopse não disponível</div>'
+      }
+      ${b.biografia_autor ? `<div class="detail-bio"><span class="detail-bio-label">sobre o autor</span>${escHtml(b.biografia_autor)}</div>` : ''}
+    `;
 
     document.getElementById('detail-overlay').classList.add('open');
     window.scrollTo(0, 0);
@@ -479,6 +509,27 @@
     if (!s) return '';
     return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
       .format(new Date(s + 'T12:00:00'));
+  }
+
+  const CONTRIBUTOR_TYPES = {
+    A01: 'autor', A12: 'ilustrador', A38: 'ilustrador', B06: 'tradução',
+    B01: 'edição', A36: 'direção de arte', A11: 'fotografias', A09: 'introdução',
+  };
+
+  function formatContributors(contributors) {
+    if (!contributors || !contributors.length) return '';
+    const groups = {};
+    for (const c of contributors) {
+      const role = CONTRIBUTOR_TYPES[c.type] || null;
+      if (!role) continue;
+      const name = c.groupName || [c.firstName, c.lastName].filter(Boolean).join(' ');
+      if (!name) continue;
+      if (!groups[role]) groups[role] = [];
+      groups[role].push(escHtml(name));
+    }
+    return Object.entries(groups)
+      .map(([role, names]) => `<span class="contrib-role">${role}:</span> ${names.join(', ')}`)
+      .join(' &nbsp;·&nbsp; ');
   }
 
   function escHtml(s = '') {
