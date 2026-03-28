@@ -13,9 +13,11 @@ Variáveis de ambiente necessárias:
   META_TOKEN      token da API Metabooks
 """
 
+import io
 import json
 import os
 import re
+import struct
 import sys
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf-8', buffering=1)
@@ -81,6 +83,30 @@ def normalize(s):
     s = unicodedata.normalize('NFD', s.lower())
     s = ''.join(c for c in s if unicodedata.category(c) != 'Mn')
     return re.sub(r'[^a-z0-9 ]', '', s).strip()
+
+
+def cover_ratio(url):
+    """Retorna largura/altura real da imagem lendo só o header (sem baixar tudo)."""
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'livros-wiki/1.0'})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            header = r.read(8192)
+        # JPEG: procura marcador SOF (FF C0 ou FF C2)
+        i = 0
+        while i < len(header) - 8:
+            if header[i] == 0xFF and header[i+1] in (0xC0, 0xC1, 0xC2):
+                h = struct.unpack('>H', header[i+5:i+7])[0]
+                w = struct.unpack('>H', header[i+7:i+9])[0]
+                return round(w / h, 3) if h else None
+            i += 1
+        # PNG: dimensões nos bytes 16-24
+        if header[:8] == b'\x89PNG\r\n\x1a\n':
+            w = struct.unpack('>I', header[16:20])[0]
+            h = struct.unpack('>I', header[20:24])[0]
+            return round(w / h, 3) if h else None
+    except Exception:
+        pass
+    return None
 
 
 def parse_date(s):
@@ -152,12 +178,16 @@ for pub in PUBLISHERS:
                     if c.get('firstName') or c.get('lastName') or c.get('groupName')
                 ]
 
+                capa_url = (f"{b['coverUrl']}?access_token={META_COVER_TOKEN}" if b.get('coverUrl') and META_COVER_TOKEN else b.get('coverUrl') or '')
+                ratio = cover_ratio(capa_url) if capa_url and isbn not in existing else None
+
                 payload = {
                     'isbn':            isbn,
                     'titulo':          (b.get('title') or '—')[:500],
                     'autor':           (b.get('author') or '')[:255],
                     'editora':         (b.get('publisher') or pub['label'])[:255],
-                    'capa_url':        (f"{b['coverUrl']}?access_token={META_COVER_TOKEN}" if b.get('coverUrl') and META_COVER_TOKEN else b.get('coverUrl') or ''),
+                    'capa_url':        capa_url,
+                    'capa_ratio':      ratio,
                     'sinopse':         strip_html(b.get('mainDescription') or b.get('shortDescription')),
                     'biografia_autor': strip_html(b.get('biographicalNote')),
                     'contributors':    contributors or None,
