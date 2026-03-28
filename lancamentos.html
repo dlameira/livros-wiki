@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lançamentos</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f0f;
+      --surface: #161616;
+      --border: #242424;
+      --text: #e0d8ce;
+      --muted: #666;
+      --accent: #c9a84c;
+    }
+
+    body {
+      font-family: 'Georgia', serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      padding: 32px 48px 0;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: normal;
+      letter-spacing: 0.06em;
+      color: #f0e8dc;
+      margin-bottom: 6px;
+    }
+
+    header p {
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    /* ── FILTROS ── */
+    .filters {
+      padding: 24px 48px 0;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .pill {
+      padding: 5px 13px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      font-size: 0.78rem;
+      cursor: pointer;
+      background: transparent;
+      color: var(--muted);
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+
+    .pill:hover { border-color: #444; color: #aaa; }
+
+    .pill.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #0f0f0f;
+    }
+
+    /* ── STATUS ── */
+    .status {
+      padding: 16px 48px 0;
+      font-size: 0.8rem;
+      color: var(--muted);
+      min-height: 32px;
+    }
+
+    /* ── GRID ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 28px 20px;
+      padding: 24px 48px 80px;
+    }
+
+    .book-card {
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+
+    .book-card:hover { transform: translateY(-4px); }
+    .book-card:hover .card-title { color: var(--accent); }
+
+    .cover-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 2/3;
+      background: var(--surface);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 9px;
+    }
+
+    .cover-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: opacity 0.3s;
+    }
+
+    .cover-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #333;
+      font-size: 2rem;
+    }
+
+    .card-title {
+      font-size: 0.82rem;
+      line-height: 1.35;
+      color: var(--text);
+      margin-bottom: 3px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      transition: color 0.15s;
+    }
+
+    .card-author {
+      font-size: 0.73rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-meta {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .card-publisher {
+      font-size: 0.68rem;
+      color: #555;
+    }
+
+    .card-date {
+      font-size: 0.68rem;
+      color: #444;
+    }
+
+    .empty {
+      grid-column: 1/-1;
+      text-align: center;
+      color: #333;
+      padding: 80px 0;
+      font-size: 0.9rem;
+    }
+
+    /* ── DETALHE ── */
+    .detail-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 200;
+      align-items: flex-start;
+      justify-content: center;
+      overflow-y: auto;
+      padding: 40px 20px;
+    }
+
+    .detail-overlay.open { display: flex; }
+
+    .detail-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 680px;
+      max-width: 100%;
+      padding: 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .detail-back {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid #333;
+      color: #aaa;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      font-family: inherit;
+      z-index: 10;
+      transition: background 0.15s;
+    }
+    .detail-back:hover { background: rgba(0,0,0,0.8); color: #fff; }
+
+    .detail-hero {
+      display: flex;
+      gap: 0;
+      min-height: 280px;
+    }
+
+    .detail-cover {
+      width: 180px;
+      flex-shrink: 0;
+      background: #111;
+    }
+
+    .detail-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .detail-cover-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #2a2a2a;
+      font-size: 3rem;
+    }
+
+    .detail-header {
+      flex: 1;
+      padding: 48px 28px 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      background: linear-gradient(to bottom, #111 0%, var(--surface) 100%);
+    }
+
+    .detail-publisher-badge {
+      font-size: 0.72rem;
+      color: var(--accent);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .detail-title {
+      font-size: 1.4rem;
+      font-weight: normal;
+      line-height: 1.3;
+      color: #f0e8dc;
+      margin-bottom: 6px;
+    }
+
+    .detail-author {
+      font-size: 0.9rem;
+      color: #aaa;
+      margin-bottom: 12px;
+    }
+
+    .detail-tags {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .detail-tag {
+      font-size: 0.72rem;
+      padding: 3px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: #666;
+    }
+
+    .detail-body {
+      padding: 24px 28px 32px;
+    }
+
+    .detail-sinopse {
+      font-size: 0.88rem;
+      line-height: 1.7;
+      color: #aaa;
+    }
+
+    .detail-sinopse p { margin-bottom: 12px; }
+    .detail-sinopse p:last-child { margin-bottom: 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>lançamentos</h1>
+  <p>acompanhe os novos livros das editoras selecionadas</p>
+</header>
+
+<div class="filters" id="filters">
+  <button class="pill active" data-pub="all" onclick="setFilter('all', this)">todos</button>
+</div>
+
+<div class="status" id="status"></div>
+
+<div class="grid" id="grid"></div>
+
+<!-- Detalhe -->
+<div class="detail-overlay" id="detail-overlay">
+  <div class="detail-panel" id="detail-panel">
+    <button class="detail-back" onclick="closeDetail()">← voltar</button>
+    <div class="detail-hero">
+      <div class="detail-cover" id="detail-cover"></div>
+      <div class="detail-header" id="detail-header"></div>
+    </div>
+    <div class="detail-body" id="detail-body"></div>
+  </div>
+</div>
+
+<script>
+  // ── CONFIGURAÇÃO DE EDITORAS ──────────────────────────────────────
+  // Adicione ou remova editoras aqui. "search" é o termo que a
+  // Metabooks entende; "label" é como aparece no filtro da página.
+  const PUBLISHERS = [
+    { label: 'Companhia das Letras', search: 'Companhia das Letras' },
+    { label: 'Intrínseca',           search: 'Intrinseca' },
+    { label: 'Seiva',                search: 'Seiva' },
+    { label: 'Rocco',                search: 'Rocco' },
+    { label: 'Todavia',              search: 'Todavia' },
+    { label: 'Fósforo',              search: 'Fosforo Editora' },
+    { label: 'Darkside',             search: 'Darkside' },
+    { label: 'Autêntica',            search: 'Autentica' },
+    { label: 'Arqueiro',             search: 'Arqueiro' },
+    { label: 'Record',               search: 'Record' },
+  ];
+  // ─────────────────────────────────────────────────────────────────
+
+  const META_TOKEN = '61fbd184-1747-4568-b6da-854d297b46d0';
+  const META_BASE  = 'https://www.metabooks.com/api/v2';
+  const PAGE_SIZE  = 40; // livros mais recentes por editora
+  const CACHE_KEY  = 'lancamentos_cache_v1';
+  const CACHE_TTL  = 3 * 60 * 60 * 1000; // 3 horas
+
+  let allBooks = [];
+  let currentFilter = 'all';
+
+  // ── INIT ──
+
+  async function init() {
+    buildFilters();
+
+    // Tenta cache
+    const cached = loadCache();
+    if (cached) {
+      allBooks = cached;
+      renderGrid();
+      return;
+    }
+
+    await fetchAll();
+  }
+
+  // ── FILTROS ──
+
+  function buildFilters() {
+    const container = document.getElementById('filters');
+    PUBLISHERS.forEach(pub => {
+      const btn = document.createElement('button');
+      btn.className = 'pill';
+      btn.textContent = pub.label;
+      btn.dataset.pub = pub.label;
+      btn.onclick = () => setFilter(pub.label, btn);
+      container.appendChild(btn);
+    });
+  }
+
+  function setFilter(pub, btn) {
+    currentFilter = pub;
+    document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    renderGrid();
+  }
+
+  // ── FETCH ──
+
+  async function fetchAll() {
+    setStatus(`carregando ${PUBLISHERS.length} editoras...`);
+    try {
+      const results = await Promise.all(PUBLISHERS.map(fetchPublisher));
+      allBooks = results.flat().sort((a, b) => dateVal(b) - dateVal(a));
+      saveCache(allBooks);
+      renderGrid();
+      setStatus('');
+    } catch(e) {
+      setStatus('erro ao carregar dados');
+      console.error(e);
+    }
+  }
+
+  async function fetchPublisher(pub) {
+    // 1. Pega total de páginas
+    const r1 = await fetch(
+      `${META_BASE}/products?access_token=${META_TOKEN}&search=${encodeURIComponent(pub.search)}&size=1&sort=createDate`
+    );
+    const j1 = await r1.json();
+    const totalPages = j1.totalPages || 1;
+
+    // 2. Busca últimas páginas (mais recentes)
+    const lastPage = Math.max(0, totalPages - 1);
+    const r2 = await fetch(
+      `${META_BASE}/products?access_token=${META_TOKEN}&search=${encodeURIComponent(pub.search)}&size=${PAGE_SIZE}&sort=createDate&page=${lastPage}`
+    );
+    const j2 = await r2.json();
+    const items = j2.content || [];
+
+    // Filtra para garantir que é da editora certa
+    return items
+      .filter(b => normalize(b.publisher) === normalize(pub.search) || normalize(b.publisher).includes(normalize(pub.search.split(' ')[0])))
+      .map(b => ({
+        isbn:        (b.gtin || b.isbn || '').replace(/\D/g,''),
+        title:       b.title || '—',
+        author:      b.author || '',
+        publisher:   b.publisher || pub.label,
+        pubLabel:    pub.label,
+        createDate:  b.createDate || '',
+        releaseDate: b.publicationDate || b.onSaleDate || b.announcementDate || '',
+        coverUrl:    b.coverUrl || '',
+        sinopse:     (b.mainDescription || b.shortDescription || '').replace(/<[^>]+>/g,'').trim(),
+        edition:     b.edition || '',
+        language:    b.language || '',
+        price:       b.priceBrl || null,
+      }));
+  }
+
+  function normalize(s = '') {
+    return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,'').trim();
+  }
+
+  function dateVal(book) {
+    const s = book.createDate;
+    if (!s) return 0;
+    // DD/MM/YYYY or YYYY-MM-DD
+    if (s.includes('/')) {
+      const [d, m, y] = s.split('/');
+      return new Date(`${y}-${m}-${d}`).getTime();
+    }
+    return new Date(s).getTime();
+  }
+
+  function formatDate(s) {
+    if (!s) return '';
+    if (s.includes('/')) {
+      const [d, m, y] = s.split('/');
+      return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(`${y}-${m}-${d}`));
+    }
+    return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(s));
+  }
+
+  // ── CACHE ──
+
+  function saveCache(data) {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
+    } catch(e) {}
+  }
+
+  function loadCache() {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      const { ts, data } = JSON.parse(raw);
+      if (Date.now() - ts > CACHE_TTL) return null;
+      return data;
+    } catch(e) { return null; }
+  }
+
+  // ── RENDER GRID ──
+
+  function renderGrid() {
+    const books = currentFilter === 'all'
+      ? allBooks
+      : allBooks.filter(b => b.pubLabel === currentFilter);
+
+    const grid = document.getElementById('grid');
+
+    if (!books.length) {
+      grid.innerHTML = '<div class="empty">nenhum lançamento encontrado</div>';
+      return;
+    }
+
+    grid.innerHTML = books.map((b, i) => `
+      <div class="book-card" onclick="openDetail(${i})">
+        <div class="cover-wrap">
+          ${b.coverUrl
+            ? `<img src="${b.coverUrl}" alt="${escHtml(b.title)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=cover-placeholder>📖</div>'">`
+            : '<div class="cover-placeholder">📖</div>'
+          }
+        </div>
+        <div class="card-title">${escHtml(b.title)}</div>
+        <div class="card-author">${escHtml(b.author)}</div>
+        <div class="card-meta">
+          <span class="card-publisher">${escHtml(b.publisher)}</span>
+          ${b.releaseDate ? `<span class="card-date">· ${formatDate(b.releaseDate)}</span>` : ''}
+        </div>
+      </div>
+    `).join('');
+
+    setStatus(`${books.length} lançamento${books.length !== 1 ? 's' : ''}`);
+  }
+
+  // ── DETALHE ──
+
+  function openDetail(index) {
+    const books = currentFilter === 'all'
+      ? allBooks
+      : allBooks.filter(b => b.pubLabel === currentFilter);
+    const b = books[index];
+    if (!b) return;
+
+    document.getElementById('detail-cover').innerHTML = b.coverUrl
+      ? `<img src="${b.coverUrl}" alt="${escHtml(b.title)}" onerror="this.parentElement.innerHTML='<div class=detail-cover-placeholder>📖</div>'">`
+      : '<div class="detail-cover-placeholder">📖</div>';
+
+    document.getElementById('detail-header').innerHTML = `
+      <div class="detail-publisher-badge">${escHtml(b.publisher)}</div>
+      <div class="detail-title">${escHtml(b.title)}</div>
+      <div class="detail-author">${escHtml(b.author)}</div>
+      <div class="detail-tags">
+        ${b.releaseDate ? `<span class="detail-tag">lançamento ${formatDate(b.releaseDate)}</span>` : ''}
+        ${b.isbn ? `<span class="detail-tag">ISBN ${b.isbn}</span>` : ''}
+        ${b.price ? `<span class="detail-tag">R$ ${parseFloat(b.price).toFixed(2)}</span>` : ''}
+        ${b.edition ? `<span class="detail-tag">${escHtml(b.edition)}</span>` : ''}
+      </div>
+    `;
+
+    document.getElementById('detail-body').innerHTML = b.sinopse
+      ? `<div class="detail-sinopse">${b.sinopse.split('\n').filter(Boolean).map(p => `<p>${escHtml(p)}</p>`).join('')}</div>`
+      : '<div class="detail-sinopse" style="color:#444">sinopse não disponível</div>';
+
+    document.getElementById('detail-overlay').classList.add('open');
+    window.scrollTo(0, 0);
+  }
+
+  function closeDetail() {
+    document.getElementById('detail-overlay').classList.remove('open');
+  }
+
+  document.getElementById('detail-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('detail-overlay')) closeDetail();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeDetail();
+  });
+
+  function escHtml(s = '') {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function setStatus(msg) {
+    document.getElementById('status').textContent = msg;
+  }
+
+  init();
+</script>
+</body>
+</html>
