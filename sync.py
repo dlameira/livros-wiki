@@ -24,7 +24,7 @@ import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 # ── Configuração ──────────────────────────────────────────────────────────────
 
@@ -33,6 +33,7 @@ DIRECTUS_TOKEN = os.environ['DIRECTUS_TOKEN']
 META_TOKEN     = os.environ['META_TOKEN']
 META_BASE      = 'https://www.metabooks.com/api/v2'
 PAGE_SIZE      = 40
+MONTHS_BACK    = 6  # janela de publicação para sincronizar
 
 PUBLISHERS = [
     {'label': 'Companhia das Letras', 'search': 'Companhia das Letras'},
@@ -115,67 +116,72 @@ print(f'  {len(existing)} livros já existem\n')
 to_create = []
 to_update = []  # lista de (id, payload)
 
+# Data de corte: MONTHS_BACK meses atrás, formato YYYYMMDD para a API Metabooks
+cutoff = datetime.now(timezone.utc) - timedelta(days=MONTHS_BACK * 30)
+date_from = cutoff.strftime('%Y%m%d')
+
 for pub in PUBLISHERS:
-    print(f'Buscando: {pub["label"]}...')
+    print(f'Buscando: {pub["label"]} (publicações desde {cutoff.strftime("%d/%m/%Y")})...')
     try:
-        # Descobre total de páginas (usando o mesmo PAGE_SIZE da busca)
-        url1 = (f'{META_BASE}/products?access_token={META_TOKEN}'
-                f'&search={urllib.parse.quote(pub["search"])}&size={PAGE_SIZE}&sort=createDate')
-        j1 = fetch_meta(url1)
-        total_pages = j1.get('totalPages', 1)
-        last_page   = max(0, total_pages - 1)
-
-        # Busca última página (mais recentes)
-        url2 = (f'{META_BASE}/products?access_token={META_TOKEN}'
-                f'&search={urllib.parse.quote(pub["search"])}&size={PAGE_SIZE}'
-                f'&sort=createDate&page={last_page}')
-        j2    = fetch_meta(url2)
-        items = j2.get('content', [])
-
-        pub_norm  = normalize(pub['search'])
-        pub_first = normalize(pub['search'].split()[0])
-
+        search_query = urllib.parse.quote(f'VL={pub["search"]} AND EJ={date_from}^99991231')
+        page = 0
         count = 0
-        for b in items:
-            bp = normalize(b.get('publisher', ''))
-            if pub_norm not in bp and pub_first not in bp:
-                continue
 
-            isbn = (b.get('gtin') or b.get('isbn') or '').replace('-', '').replace(' ', '')
-            if not isbn:
-                continue
+        while True:
+            url = (f'{META_BASE}/products?access_token={META_TOKEN}'
+                   f'&search={search_query}&size={PAGE_SIZE}'
+                   f'&sort=publicationDate&direction=desc&page={page}')
+            j = fetch_meta(url)
+            items = j.get('content', [])
+            if not items:
+                break
 
-            pub_date = parse_date(b.get('publicationDate') or b.get('onSaleDate'))
-            ano = None
-            if pub_date:
-                try:
-                    ano = int(pub_date[:4])
-                except ValueError:
-                    pass
+            for b in items:
+                isbn = (b.get('gtin') or b.get('isbn') or '').replace('-', '').replace(' ', '')
+                if not isbn:
+                    continue
 
-            payload = {
-                'isbn':            isbn,
-                'titulo':          (b.get('title') or '—')[:500],
-                'autor':           (b.get('author') or '')[:255],
-                'editora':         (b.get('publisher') or pub['label'])[:255],
-                'capa_url':        b.get('coverUrl') or '',
-                'sinopse':         strip_html(b.get('mainDescription') or b.get('shortDescription')),
-                'data_publicacao': pub_date,
-            }
+                pub_date = parse_date(b.get('publicationDate') or b.get('onSaleDate'))
 
-            if isbn in existing:
-                to_update.append((existing[isbn], payload))
-            else:
-                to_create.append(payload)
+                payload = {
+                    'isbn':            isbn,
+                    'titulo':          (b.get('title') or '—')[:500],
+                    'autor':           (b.get('author') or '')[:255],
+                    'editora':         (b.get('publisher') or pub['label'])[:255],
+                    'capa_url':        b.get('coverUrl') or '',
+                    'sinopse':         strip_html(b.get('mainDescription') or b.get('shortDescription')),
+                    'data_publicacao': pub_date,
+                }
 
-            count += 1
+                if isbn in existing:
+                    to_update.append((existing[isbn], payload))
+                else:
+                    to_create.append(payload)
+
+                count += 1
+
+            if j.get('last', True):
+                break
+            page += 1
 
         print(f'  {count} livros encontrados')
 
     except Exception as e:
         print(f'  ERRO: {e}', file=sys.stderr)
 
-# ── 3. Criar novos ────────────────────────────────────────────────────────────
+# ── 3. Deduplicar por ISBN ────────────────────────────────────────────────────
+
+seen = {}
+for p in to_create:
+    seen[p['isbn']] = p
+to_create = list(seen.values())
+
+seen_upd = {}
+for id_, p in to_update:
+    seen_upd[p['isbn']] = (id_, p)
+to_update = list(seen_upd.values())
+
+# ── 4. Criar novos ────────────────────────────────────────────────────────────
 
 print(f'\nCriando {len(to_create)} novos livros...')
 if to_create:
@@ -185,7 +191,7 @@ if to_create:
         if result:
             print(f'  Lote {i//BATCH+1}: {len(result.get("data", []))} criados')
 
-# ── 4. Atualizar existentes ───────────────────────────────────────────────────
+# ── 5. Atualizar existentes ───────────────────────────────────────────────────
 
 print(f'Atualizando {len(to_update)} livros existentes...')
 if to_update:
@@ -197,4 +203,4 @@ if to_update:
         if result:
             print(f'  Lote {i//BATCH+1}: {len(result.get("data", []))} atualizados')
 
-print(f'\nConcluído em {datetime.utcnow().strftime("%Y-%m-%d %H:%M")} UTC')
+print(f'\nConcluído em {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")} UTC')
