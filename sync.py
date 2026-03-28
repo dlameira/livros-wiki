@@ -191,7 +191,6 @@ for pub in publishers:
                 ]
 
                 capa_url = (f"{b['coverUrl']}?access_token={META_COVER_TOKEN}" if b.get('coverUrl') and META_COVER_TOKEN else b.get('coverUrl') or '')
-                ratio = cover_ratio(capa_url) if capa_url and isbn not in existing else None
 
                 payload = {
                     'isbn':            isbn,
@@ -199,7 +198,6 @@ for pub in publishers:
                     'autor':           (b.get('author') or '')[:255],
                     'editora':         (b.get('publisher') or pub['label'])[:255],
                     'capa_url':        capa_url,
-                    'capa_ratio':      ratio,
                     'sinopse':         strip_html(b.get('mainDescription') or b.get('shortDescription')),
                     'biografia_autor': strip_html(b.get('biographicalNote')),
                     'contributors':    contributors or None,
