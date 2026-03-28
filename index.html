@@ -585,7 +585,7 @@
     setStatus('carregando...');
     try {
       const r = await fetch(
-        `${DIRECTUS_URL}/items/biblioteca?limit=10000&sort=-data_publicacao&fields=id,isbn,titulo,autor,editora,capa_url,sinopse,biografia_autor,contributors,data_publicacao`,
+        `${DIRECTUS_URL}/items/biblioteca?limit=-1&sort=-data_publicacao&fields=id,isbn,titulo,autor,editora,capa_url,sinopse,biografia_autor,contributors,data_publicacao`,
         { headers: { Authorization: `Bearer ${DIRECTUS_TOKEN}` } }
       );
       const j = await r.json();
