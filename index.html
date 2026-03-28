@@ -260,14 +260,15 @@
 
     /* ── FILTROS ── */
     .filters-row {
-      padding: 20px 48px 0;
+      padding: 16px 48px 0;
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
       align-items: center;
     }
 
-    .pill, .pill-editora {
+    /* Pills de preset */
+    .pill {
       padding: 5px 13px;
       border-radius: 20px;
       border: 1px solid var(--border);
@@ -278,20 +279,93 @@
       transition: all 0.15s;
       font-family: inherit;
     }
+    .pill:hover { border-color: #444; color: #aaa; }
+    .pill.active { background: var(--accent); border-color: var(--accent); color: #0f0f0f; }
 
-    .pill:hover, .pill-editora:hover { border-color: #444; color: #aaa; }
-
-    .pill.active {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #0f0f0f;
+    /* Seletores de data */
+    .filter-label {
+      font-size: 0.78rem;
+      color: var(--muted);
     }
-
-    .pill-editora.active {
-      background: #2a2a2a;
-      border-color: #555;
-      color: #ddd;
+    .date-sel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 0.78rem;
+      font-family: inherit;
+      padding: 4px 6px;
+      border-radius: 6px;
+      cursor: pointer;
+      outline: none;
     }
+    .date-sel:focus { border-color: #444; }
+    .date-sep { color: var(--muted); font-size: 0.78rem; margin: 0 4px; }
+
+    /* Busca de editora */
+    .pub-search-wrap { position: relative; }
+    .pub-input {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 0.78rem;
+      font-family: inherit;
+      padding: 5px 13px;
+      border-radius: 20px;
+      outline: none;
+      width: 150px;
+      transition: border-color 0.15s;
+    }
+    .pub-input::placeholder { color: var(--muted); }
+    .pub-input:focus { border-color: #444; }
+
+    .pub-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      background: var(--surface);
+      border: 1px solid #333;
+      border-radius: 8px;
+      min-width: 220px;
+      max-height: 260px;
+      overflow-y: auto;
+      z-index: 100;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    .pub-dropdown.open { display: block; }
+    .pub-option {
+      padding: 8px 14px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .pub-option:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+    .pub-option.selected { color: var(--text); }
+    .pub-option.selected::before { content: '✓ '; color: var(--accent); }
+    .pub-empty { cursor: default; color: #444; }
+    .pub-empty:hover { background: transparent; }
+
+    /* Tags de editoras selecionadas */
+    .pub-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px 4px 12px;
+      border-radius: 20px;
+      border: 1px solid #3a3a3a;
+      background: #1e1e1e;
+      font-size: 0.75rem;
+      color: var(--text);
+    }
+    .pub-tag-remove {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1;
+      transition: color 0.15s;
+    }
+    .pub-tag-remove:hover { color: var(--text); }
 
     .detail-contributors {
       font-size: 0.78rem;
@@ -326,12 +400,25 @@
 </header>
 
 <div class="filters-row" id="filters-category">
-  <button class="pill" onclick="setCategory('prevenda', this)">em pré-venda</button>
-  <button class="pill active" onclick="setCategory('lancamentos', this)">lançamentos</button>
-  <button class="pill" onclick="setCategory('catalogo', this)">todo catálogo</button>
+  <button class="pill" onclick="setPreset('prevenda',this)">pré-venda</button>
+  <button class="pill active" onclick="setPreset('lancamentos',this)">lançamentos</button>
+  <button class="pill" onclick="setPreset('tudo',this)">tudo</button>
 </div>
-<div class="filters-row" id="filters-editora">
-  <button class="pill-editora active" onclick="setEditora('all', this)">todas</button>
+<div class="filters-row" id="filters-date">
+  <span class="filter-label">de</span>
+  <select class="date-sel" id="from-month" onchange="onDateChange()"></select>
+  <select class="date-sel" id="from-year" onchange="onDateChange()"></select>
+  <span class="filter-label">até</span>
+  <select class="date-sel" id="to-month" onchange="onDateChange()"></select>
+  <select class="date-sel" id="to-year" onchange="onDateChange()"></select>
+</div>
+<div class="filters-row" id="filters-pub">
+  <div class="pub-search-wrap" id="pub-search-wrap">
+    <input class="pub-input" id="pub-input" type="text" placeholder="editora…"
+      oninput="onPubInput(this.value)" onfocus="openPubDropdown()" autocomplete="off">
+    <div class="pub-dropdown" id="pub-dropdown"></div>
+  </div>
+  <div id="pub-tags"></div>
 </div>
 
 <div class="status" id="status"></div>
@@ -354,11 +441,142 @@
   const DIRECTUS_URL   = 'https://directus-production-afdd.up.railway.app';
   const DIRECTUS_TOKEN = '73IhvvuNMBy-et-_0Ore5ZH2jo25pnU5';
 
-  let allBooks = [];
-  let currentCategory = 'lancamentos';
-  let currentEditora  = 'all';
+  let allBooks    = [];
+  let allEditoras = [];
+  let selectedEditoras = new Set();
+  let dateFrom = null;
+  let dateTo   = null;
+
+  const MONTHS_PT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+  // ── Datas ──────────────────────────────────────────────────────────────────
+
+  function buildDateSelects() {
+    const year = new Date().getFullYear();
+    ['from-month','to-month'].forEach(id => {
+      const sel = document.getElementById(id);
+      MONTHS_PT.forEach((m, i) => {
+        const o = document.createElement('option');
+        o.value = i; o.textContent = m; sel.appendChild(o);
+      });
+    });
+    ['from-year','to-year'].forEach(id => {
+      const sel = document.getElementById(id);
+      for (let y = 2018; y <= year + 2; y++) {
+        const o = document.createElement('option');
+        o.value = y; o.textContent = y; sel.appendChild(o);
+      }
+    });
+  }
+
+  function setDateSelects(from, to) {
+    if (from) {
+      document.getElementById('from-month').value = from.getMonth();
+      document.getElementById('from-year').value  = from.getFullYear();
+    }
+    if (to) {
+      document.getElementById('to-month').value = to.getMonth();
+      document.getElementById('to-year').value  = to.getFullYear();
+    }
+  }
+
+  function setPreset(name, btn) {
+    const today = new Date();
+    if (name === 'prevenda') {
+      const from = new Date(today); from.setDate(today.getDate() + 1);
+      const to   = new Date(today); to.setMonth(today.getMonth() + 18);
+      dateFrom = from; dateTo = to;
+    } else if (name === 'lancamentos') {
+      const from = new Date(today); from.setMonth(today.getMonth() - 4); from.setDate(1);
+      dateFrom = from; dateTo = new Date(today);
+    } else {
+      const to = new Date(today); to.setMonth(today.getMonth() + 18);
+      dateFrom = new Date(2018, 0, 1); dateTo = to;
+    }
+    setDateSelects(dateFrom, dateTo);
+    document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    renderGrid();
+  }
+
+  function onDateChange() {
+    document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+    const fm = +document.getElementById('from-month').value;
+    const fy = +document.getElementById('from-year').value;
+    const tm = +document.getElementById('to-month').value;
+    const ty = +document.getElementById('to-year').value;
+    dateFrom = new Date(fy, fm, 1);
+    dateTo   = new Date(ty, tm + 1, 0);
+    renderGrid();
+  }
+
+  // ── Editoras ───────────────────────────────────────────────────────────────
+
+  function buildPublisherList() {
+    allEditoras = [...new Set(allBooks.map(b => b.editora).filter(Boolean))].sort();
+  }
+
+  function onPubInput(query) { openPubDropdown(query); }
+
+  function openPubDropdown(query) {
+    const q = query !== undefined ? query : document.getElementById('pub-input').value;
+    const filtered = allEditoras.filter(e => !q || e.toLowerCase().includes(q.toLowerCase()));
+    const dd = document.getElementById('pub-dropdown');
+    dd.innerHTML = filtered.length
+      ? filtered.map(e =>
+          `<div class="pub-option${selectedEditoras.has(e) ? ' selected' : ''}" data-pub="${escHtml(e)}">${escHtml(e)}</div>`
+        ).join('')
+      : '<div class="pub-option pub-empty">nenhuma encontrada</div>';
+    dd.classList.add('open');
+  }
+
+  function closePubDropdown() {
+    document.getElementById('pub-dropdown').classList.remove('open');
+    document.getElementById('pub-input').value = '';
+  }
+
+  function toggleEditora(name) {
+    if (selectedEditoras.has(name)) selectedEditoras.delete(name);
+    else selectedEditoras.add(name);
+    openPubDropdown();
+    renderPublisherTags();
+    renderGrid();
+  }
+
+  function renderPublisherTags() {
+    document.getElementById('pub-tags').innerHTML = [...selectedEditoras].map(e =>
+      `<span class="pub-tag">${escHtml(e)}<span class="pub-tag-remove" data-pub="${escHtml(e)}">×</span></span>`
+    ).join('');
+  }
+
+  document.getElementById('pub-dropdown').addEventListener('click', e => {
+    const opt = e.target.closest('.pub-option');
+    if (opt && opt.dataset.pub) toggleEditora(opt.dataset.pub);
+  });
+  document.getElementById('pub-tags').addEventListener('click', e => {
+    const rem = e.target.closest('.pub-tag-remove');
+    if (rem) toggleEditora(rem.dataset.pub);
+  });
+  document.addEventListener('click', e => {
+    if (!document.getElementById('pub-search-wrap').contains(e.target)) closePubDropdown();
+  });
+
+  // ── Filter + fetch ─────────────────────────────────────────────────────────
+
+  function filterBooks() {
+    let books = allBooks;
+    if (dateFrom) books = books.filter(b => b.data_publicacao &&
+      new Date(b.data_publicacao + 'T12:00:00') >= dateFrom);
+    if (dateTo)   books = books.filter(b => b.data_publicacao &&
+      new Date(b.data_publicacao + 'T12:00:00') <= dateTo);
+    if (selectedEditoras.size > 0)
+      books = books.filter(b => selectedEditoras.has(b.editora));
+    return books;
+  }
 
   async function init() {
+    buildDateSelects();
+    setPreset('lancamentos', document.querySelector('.pill.active'));
     setStatus('carregando...');
     try {
       const r = await fetch(
@@ -373,55 +591,11 @@
         if (seen.has(key)) return false;
         seen.add(key); return true;
       });
-      buildEditoraFilter();
+      buildPublisherList();
       renderGrid();
     } catch(e) {
       setStatus('erro ao carregar');
     }
-  }
-
-  function buildEditoraFilter() {
-    const container = document.getElementById('filters-editora');
-    container.innerHTML = '<button class="pill-editora active" onclick="setEditora(\'all\', this)">todas</button>';
-    const editoras = [...new Set(allBooks.map(b => b.editora).filter(Boolean))].sort();
-    editoras.forEach(ed => {
-      const btn = document.createElement('button');
-      btn.className = 'pill-editora';
-      btn.textContent = ed;
-      btn.onclick = () => setEditora(ed, btn);
-      container.appendChild(btn);
-    });
-  }
-
-  function setCategory(cat, btn) {
-    currentCategory = cat;
-    document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    renderGrid();
-  }
-
-  function setEditora(ed, btn) {
-    currentEditora = ed;
-    document.querySelectorAll('.pill-editora').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    renderGrid();
-  }
-
-  function filterBooks() {
-    const today = new Date(); today.setHours(0,0,0,0);
-    const cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - 4); cutoff.setHours(0,0,0,0);
-    let books = allBooks;
-    if (currentCategory === 'prevenda') {
-      books = books.filter(b => b.data_publicacao && new Date(b.data_publicacao + 'T12:00:00') > today);
-    } else if (currentCategory === 'lancamentos') {
-      books = books.filter(b => {
-        if (!b.data_publicacao) return false;
-        const d = new Date(b.data_publicacao + 'T12:00:00');
-        return d >= cutoff && d <= today;
-      });
-    }
-    if (currentEditora !== 'all') books = books.filter(b => b.editora === currentEditora);
-    return books;
   }
 
   function onCoverLoad(img) {
