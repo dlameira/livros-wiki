@@ -51,7 +51,6 @@ PUBLISHERS = [
     {'label': 'Antofágica',           'search': 'Antofagica'},
     {'label': 'Ubu',                  'search': 'Ubu Editora'},
     {'label': 'Bazar do Tempo',       'search': 'Bazar do Tempo'},
-    {'label': 'L&PM',                 'search': 'L&PM'},
     {'label': 'Editora 34',           'search': 'Editora 34'},
 ]
 
