@@ -52,7 +52,7 @@
       grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
       gap: 28px 20px;
       padding: 24px 48px 80px;
-      align-items: end;
+      align-items: start;
     }
 
     .book-card {
@@ -70,6 +70,8 @@
       border-radius: 4px;
       overflow: hidden;
       margin-bottom: 9px;
+      display: flex;
+      align-items: flex-end;
     }
 
     .cover-wrap img {
@@ -77,6 +79,14 @@
       height: auto;
       display: block;
       transition: opacity 0.3s;
+    }
+
+    .cover-wrap.cover-standard {
+      aspect-ratio: 2/3;
+    }
+    .cover-wrap.cover-standard img {
+      height: 100%;
+      object-fit: cover;
     }
 
     .cover-placeholder {
@@ -99,7 +109,6 @@
       -webkit-box-orient: vertical;
       overflow: hidden;
       transition: color 0.15s;
-      min-height: calc(0.82rem * 1.35 * 2);
     }
 
     .card-author {
@@ -415,6 +424,44 @@
     return books;
   }
 
+  function onCoverLoad(img) {
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    // Normaliza apenas 14x21 (200x300) e 16x23 (200x288)
+    if (w === 200 && ((h >= 298 && h <= 302) || (h >= 286 && h <= 290))) {
+      img.closest('.cover-wrap').classList.add('cover-standard');
+    }
+    equalizeCoverRows();
+  }
+
+  function equalizeCoverRows() {
+    const cards = [...document.querySelectorAll('#grid .book-card')];
+    if (!cards.length) return;
+    // Reset heights so we can measure natural image heights
+    cards.forEach(c => { const w = c.querySelector('.cover-wrap'); if (w) w.style.height = ''; });
+    requestAnimationFrame(() => {
+      // Group cards by their offsetTop (= same grid row)
+      const rows = new Map();
+      cards.forEach(card => {
+        const top = card.offsetTop;
+        if (!rows.has(top)) rows.set(top, []);
+        rows.get(top).push(card);
+      });
+      // For each row: find max cover height, apply to all
+      rows.forEach(rowCards => {
+        const maxH = Math.max(...rowCards.map(c => {
+          const w = c.querySelector('.cover-wrap'); return w ? w.offsetHeight : 0;
+        }));
+        rowCards.forEach(c => {
+          const w = c.querySelector('.cover-wrap'); if (w) w.style.height = maxH + 'px';
+        });
+      });
+    });
+  }
+
+  let _eqTimer;
+  window.addEventListener('resize', () => { clearTimeout(_eqTimer); _eqTimer = setTimeout(equalizeCoverRows, 150); });
+
   function renderGrid() {
     const books = filterBooks();
     const grid = document.getElementById('grid');
@@ -427,7 +474,7 @@
       <div class="book-card" onclick="openDetail(${b.id})">
         <div class="cover-wrap">
           ${b.capa_url
-            ? `<img src="${escHtml(b.capa_url)}" alt="${escHtml(b.titulo)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=cover-placeholder>📖</div>'">`
+            ? `<img src="${escHtml(b.capa_url)}" alt="${escHtml(b.titulo)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=cover-placeholder>📖</div>'" onload="onCoverLoad(this)">`
             : '<div class="cover-placeholder">📖</div>'
           }
         </div>
@@ -435,6 +482,7 @@
         <div class="card-author">${escHtml(b.autor)}</div>
       </div>
     `).join('');
+    equalizeCoverRows();
   }
 
   function openDetail(id) {
