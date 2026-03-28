@@ -32,6 +32,7 @@ DIRECTUS_URL   = os.environ.get('DIRECTUS_URL', 'https://directus-production-afd
 DIRECTUS_TOKEN = os.environ['DIRECTUS_TOKEN']
 META_TOKEN     = os.environ['META_TOKEN']
 META_BASE      = 'https://www.metabooks.com/api/v2'
+META_COVER_TOKEN = os.environ.get('META_COVER_TOKEN', '')
 PAGE_SIZE      = 40
 MONTHS_BACK    = 6  # janela de publicação para sincronizar
 
@@ -148,7 +149,7 @@ for pub in PUBLISHERS:
                     'titulo':          (b.get('title') or '—')[:500],
                     'autor':           (b.get('author') or '')[:255],
                     'editora':         (b.get('publisher') or pub['label'])[:255],
-                    'capa_url':        b.get('coverUrl') or '',
+                    'capa_url':        (f"{b['coverUrl']}?access_token={META_COVER_TOKEN}" if b.get('coverUrl') and META_COVER_TOKEN else b.get('coverUrl') or ''),
                     'sinopse':         strip_html(b.get('mainDescription') or b.get('shortDescription')),
                     'data_publicacao': pub_date,
                 }
