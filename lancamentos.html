@@ -327,26 +327,8 @@
 </div>
 
 <script>
-  // ── CONFIGURAÇÃO DE EDITORAS ──────────────────────────────────────
-  // Adicione ou remova editoras aqui. "search" é o termo que a
-  // Metabooks entende; "label" é como aparece no filtro da página.
-  const PUBLISHERS = [
-    { label: 'Companhia das Letras', search: 'Companhia das Letras' },
-    { label: 'Intrínseca',           search: 'Intrinseca' },
-    { label: 'Seiva',                search: 'Seiva' },
-    { label: 'Rocco',                search: 'Rocco' },
-    { label: 'Todavia',              search: 'Todavia' },
-    { label: 'Fósforo',              search: 'Fosforo Editora' },
-    { label: 'Darkside',             search: 'Darkside' },
-    { label: 'Autêntica',            search: 'Autentica' },
-    { label: 'Arqueiro',             search: 'Arqueiro' },
-    { label: 'Record',               search: 'Record' },
-  ];
-  // ─────────────────────────────────────────────────────────────────
-
-  const DATA_URL  = './data/lancamentos.json';
-  const CACHE_KEY = 'lancamentos_cache_v2';
-  const CACHE_TTL = 3 * 60 * 60 * 1000; // 3 horas
+  const DIRECTUS_URL   = 'https://directus-production-afdd.up.railway.app';
+  const DIRECTUS_TOKEN = '73IhvvuNMBy-et-_0Ore5ZH2jo25pnU5';
 
   let allBooks = [];
   let currentFilter = 'all';
@@ -354,29 +336,52 @@
   // ── INIT ──
 
   async function init() {
-    buildFilters();
-
-    // Tenta cache
-    const cached = loadCache();
-    if (cached) {
-      allBooks = cached;
-      renderGrid();
-      return;
-    }
-
     await fetchAll();
   }
 
-  // ── FILTROS ──
+  // ── FETCH ──
+
+  async function fetchAll() {
+    setStatus('carregando...');
+    try {
+      const cutoff = new Date();
+      cutoff.setMonth(cutoff.getMonth() - 3);
+      const dateStr = cutoff.toISOString().split('T')[0];
+
+      const url = `${DIRECTUS_URL}/items/biblioteca`
+        + `?filter[data_publicacao][_gte]=${dateStr}`
+        + `&sort=-data_publicacao`
+        + `&limit=500`
+        + `&fields=id,isbn,titulo,autor,editora,capa_url,sinopse,data_publicacao,ano`;
+
+      const r = await fetch(url, {
+        headers: { Authorization: `Bearer ${DIRECTUS_TOKEN}` }
+      });
+      const j = await r.json();
+      allBooks = j.data || [];
+      buildFilters();
+      renderGrid();
+      setStatus(`${allBooks.length} lançamento${allBooks.length !== 1 ? 's' : ''} nos últimos 3 meses`);
+    } catch(e) {
+      setStatus('erro ao carregar lançamentos');
+      console.error(e);
+    }
+  }
+
+  // ── FILTROS (construído dinamicamente a partir dos dados) ──
 
   function buildFilters() {
     const container = document.getElementById('filters');
-    PUBLISHERS.forEach(pub => {
+    // mantém só o botão "todos"
+    container.innerHTML = '<button class="pill active" data-pub="all" onclick="setFilter(\'all\', this)">todos</button>';
+
+    const editoras = [...new Set(allBooks.map(b => b.editora).filter(Boolean))].sort();
+    editoras.forEach(ed => {
       const btn = document.createElement('button');
       btn.className = 'pill';
-      btn.textContent = pub.label;
-      btn.dataset.pub = pub.label;
-      btn.onclick = () => setFilter(pub.label, btn);
+      btn.textContent = ed;
+      btn.dataset.pub = ed;
+      btn.onclick = () => setFilter(ed, btn);
       container.appendChild(btn);
     });
   }
@@ -388,69 +393,12 @@
     renderGrid();
   }
 
-  // ── FETCH ──
-
-  async function fetchAll() {
-    setStatus('carregando...');
-    try {
-      const r = await fetch(DATA_URL);
-      if (!r.ok) throw new Error('JSON não encontrado');
-      const j = await r.json();
-      allBooks = j.books || [];
-      saveCache(allBooks);
-      renderGrid();
-      const updated = j.updated ? new Date(j.updated).toLocaleString('pt-BR') : '';
-      setStatus(updated ? `atualizado em ${updated}` : '');
-    } catch(e) {
-      setStatus('dados ainda não disponíveis — o workflow do GitHub Actions irá gerar em breve.');
-      console.error(e);
-    }
-  }
-
-  function dateVal(book) {
-    const s = book.createDate;
-    if (!s) return 0;
-    // DD/MM/YYYY or YYYY-MM-DD
-    if (s.includes('/')) {
-      const [d, m, y] = s.split('/');
-      return new Date(`${y}-${m}-${d}`).getTime();
-    }
-    return new Date(s).getTime();
-  }
-
-  function formatDate(s) {
-    if (!s) return '';
-    if (s.includes('/')) {
-      const [d, m, y] = s.split('/');
-      return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(`${y}-${m}-${d}`));
-    }
-    return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(s));
-  }
-
-  // ── CACHE ──
-
-  function saveCache(data) {
-    try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
-    } catch(e) {}
-  }
-
-  function loadCache() {
-    try {
-      const raw = localStorage.getItem(CACHE_KEY);
-      if (!raw) return null;
-      const { ts, data } = JSON.parse(raw);
-      if (Date.now() - ts > CACHE_TTL) return null;
-      return data;
-    } catch(e) { return null; }
-  }
-
   // ── RENDER GRID ──
 
   function renderGrid() {
     const books = currentFilter === 'all'
       ? allBooks
-      : allBooks.filter(b => b.pubLabel === currentFilter);
+      : allBooks.filter(b => b.editora === currentFilter);
 
     const grid = document.getElementById('grid');
 
@@ -462,21 +410,19 @@
     grid.innerHTML = books.map((b, i) => `
       <div class="book-card" onclick="openDetail(${i})">
         <div class="cover-wrap">
-          ${b.coverUrl
-            ? `<img src="${b.coverUrl}" alt="${escHtml(b.title)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=cover-placeholder>📖</div>'">`
+          ${b.capa_url
+            ? `<img src="${escHtml(b.capa_url)}" alt="${escHtml(b.titulo)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=cover-placeholder>📖</div>'">`
             : '<div class="cover-placeholder">📖</div>'
           }
         </div>
-        <div class="card-title">${escHtml(b.title)}</div>
-        <div class="card-author">${escHtml(b.author)}</div>
+        <div class="card-title">${escHtml(b.titulo)}</div>
+        <div class="card-author">${escHtml(b.autor)}</div>
         <div class="card-meta">
-          <span class="card-publisher">${escHtml(b.publisher)}</span>
-          ${b.releaseDate ? `<span class="card-date">· ${formatDate(b.releaseDate)}</span>` : ''}
+          <span class="card-publisher">${escHtml(b.editora)}</span>
+          ${b.data_publicacao ? `<span class="card-date">· ${formatDate(b.data_publicacao)}</span>` : ''}
         </div>
       </div>
     `).join('');
-
-    setStatus(`${books.length} lançamento${books.length !== 1 ? 's' : ''}`);
   }
 
   // ── DETALHE ──
@@ -484,23 +430,21 @@
   function openDetail(index) {
     const books = currentFilter === 'all'
       ? allBooks
-      : allBooks.filter(b => b.pubLabel === currentFilter);
+      : allBooks.filter(b => b.editora === currentFilter);
     const b = books[index];
     if (!b) return;
 
-    document.getElementById('detail-cover').innerHTML = b.coverUrl
-      ? `<img src="${b.coverUrl}" alt="${escHtml(b.title)}" onerror="this.parentElement.innerHTML='<div class=detail-cover-placeholder>📖</div>'">`
+    document.getElementById('detail-cover').innerHTML = b.capa_url
+      ? `<img src="${escHtml(b.capa_url)}" alt="${escHtml(b.titulo)}" onerror="this.parentElement.innerHTML='<div class=detail-cover-placeholder>📖</div>'">`
       : '<div class="detail-cover-placeholder">📖</div>';
 
     document.getElementById('detail-header').innerHTML = `
-      <div class="detail-publisher-badge">${escHtml(b.publisher)}</div>
-      <div class="detail-title">${escHtml(b.title)}</div>
-      <div class="detail-author">${escHtml(b.author)}</div>
+      <div class="detail-publisher-badge">${escHtml(b.editora)}</div>
+      <div class="detail-title">${escHtml(b.titulo)}</div>
+      <div class="detail-author">${escHtml(b.autor)}</div>
       <div class="detail-tags">
-        ${b.releaseDate ? `<span class="detail-tag">lançamento ${formatDate(b.releaseDate)}</span>` : ''}
-        ${b.isbn ? `<span class="detail-tag">ISBN ${b.isbn}</span>` : ''}
-        ${b.price ? `<span class="detail-tag">R$ ${parseFloat(b.price).toFixed(2)}</span>` : ''}
-        ${b.edition ? `<span class="detail-tag">${escHtml(b.edition)}</span>` : ''}
+        ${b.data_publicacao ? `<span class="detail-tag">lançamento ${formatDate(b.data_publicacao)}</span>` : ''}
+        ${b.isbn ? `<span class="detail-tag">ISBN ${escHtml(b.isbn)}</span>` : ''}
       </div>
     `;
 
@@ -524,8 +468,14 @@
     if (e.key === 'Escape') closeDetail();
   });
 
+  function formatDate(s) {
+    if (!s) return '';
+    return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+      .format(new Date(s + 'T12:00:00'));
+  }
+
   function escHtml(s = '') {
-    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
   function setStatus(msg) {
