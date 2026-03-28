@@ -344,11 +344,9 @@
   ];
   // ─────────────────────────────────────────────────────────────────
 
-  const META_TOKEN = '61fbd184-1747-4568-b6da-854d297b46d0';
-  const META_BASE  = 'https://www.metabooks.com/api/v2';
-  const PAGE_SIZE  = 40; // livros mais recentes por editora
-  const CACHE_KEY  = 'lancamentos_cache_v1';
-  const CACHE_TTL  = 3 * 60 * 60 * 1000; // 3 horas
+  const DATA_URL  = './data/lancamentos.json';
+  const CACHE_KEY = 'lancamentos_cache_v2';
+  const CACHE_TTL = 3 * 60 * 60 * 1000; // 3 horas
 
   let allBooks = [];
   let currentFilter = 'all';
@@ -393,56 +391,20 @@
   // ── FETCH ──
 
   async function fetchAll() {
-    setStatus(`carregando ${PUBLISHERS.length} editoras...`);
+    setStatus('carregando...');
     try {
-      const results = await Promise.all(PUBLISHERS.map(fetchPublisher));
-      allBooks = results.flat().sort((a, b) => dateVal(b) - dateVal(a));
+      const r = await fetch(DATA_URL);
+      if (!r.ok) throw new Error('JSON não encontrado');
+      const j = await r.json();
+      allBooks = j.books || [];
       saveCache(allBooks);
       renderGrid();
-      setStatus('');
+      const updated = j.updated ? new Date(j.updated).toLocaleString('pt-BR') : '';
+      setStatus(updated ? `atualizado em ${updated}` : '');
     } catch(e) {
-      setStatus('erro ao carregar dados');
+      setStatus('dados ainda não disponíveis — o workflow do GitHub Actions irá gerar em breve.');
       console.error(e);
     }
-  }
-
-  async function fetchPublisher(pub) {
-    // 1. Pega total de páginas
-    const r1 = await fetch(
-      `${META_BASE}/products?access_token=${META_TOKEN}&search=${encodeURIComponent(pub.search)}&size=1&sort=createDate`
-    );
-    const j1 = await r1.json();
-    const totalPages = j1.totalPages || 1;
-
-    // 2. Busca últimas páginas (mais recentes)
-    const lastPage = Math.max(0, totalPages - 1);
-    const r2 = await fetch(
-      `${META_BASE}/products?access_token=${META_TOKEN}&search=${encodeURIComponent(pub.search)}&size=${PAGE_SIZE}&sort=createDate&page=${lastPage}`
-    );
-    const j2 = await r2.json();
-    const items = j2.content || [];
-
-    // Filtra para garantir que é da editora certa
-    return items
-      .filter(b => normalize(b.publisher) === normalize(pub.search) || normalize(b.publisher).includes(normalize(pub.search.split(' ')[0])))
-      .map(b => ({
-        isbn:        (b.gtin || b.isbn || '').replace(/\D/g,''),
-        title:       b.title || '—',
-        author:      b.author || '',
-        publisher:   b.publisher || pub.label,
-        pubLabel:    pub.label,
-        createDate:  b.createDate || '',
-        releaseDate: b.publicationDate || b.onSaleDate || b.announcementDate || '',
-        coverUrl:    b.coverUrl || '',
-        sinopse:     (b.mainDescription || b.shortDescription || '').replace(/<[^>]+>/g,'').trim(),
-        edition:     b.edition || '',
-        language:    b.language || '',
-        price:       b.priceBrl || null,
-      }));
-  }
-
-  function normalize(s = '') {
-    return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,'').trim();
   }
 
   function dateVal(book) {
