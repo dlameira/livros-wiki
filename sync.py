@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Sincroniza livros da Metabooks com o Directus (coleção `biblioteca`).
 
@@ -16,6 +17,9 @@ import json
 import os
 import re
 import sys
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf-8', buffering=1)
+    sys.stderr = open(sys.stderr.fileno(), mode='w', encoding='utf-8', buffering=1)
 import unicodedata
 import urllib.error
 import urllib.parse
@@ -114,9 +118,9 @@ to_update = []  # lista de (id, payload)
 for pub in PUBLISHERS:
     print(f'Buscando: {pub["label"]}...')
     try:
-        # Descobre total de páginas
+        # Descobre total de páginas (usando o mesmo PAGE_SIZE da busca)
         url1 = (f'{META_BASE}/products?access_token={META_TOKEN}'
-                f'&search={urllib.parse.quote(pub["search"])}&size=1&sort=createDate')
+                f'&search={urllib.parse.quote(pub["search"])}&size={PAGE_SIZE}&sort=createDate')
         j1 = fetch_meta(url1)
         total_pages = j1.get('totalPages', 1)
         last_page   = max(0, total_pages - 1)
@@ -151,10 +155,9 @@ for pub in PUBLISHERS:
 
             payload = {
                 'isbn':            isbn,
-                'titulo':          b.get('title') or '—',
-                'autor':           b.get('author') or '',
-                'editora':         b.get('publisher') or pub['label'],
-                'ano':             ano,
+                'titulo':          (b.get('title') or '—')[:500],
+                'autor':           (b.get('author') or '')[:255],
+                'editora':         (b.get('publisher') or pub['label'])[:255],
                 'capa_url':        b.get('coverUrl') or '',
                 'sinopse':         strip_html(b.get('mainDescription') or b.get('shortDescription')),
                 'data_publicacao': pub_date,
