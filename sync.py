@@ -35,8 +35,9 @@ DIRECTUS_TOKEN = os.environ['DIRECTUS_TOKEN']
 META_TOKEN     = os.environ['META_TOKEN']
 META_BASE      = 'https://www.metabooks.com/api/v2'
 META_COVER_TOKEN = os.environ.get('META_COVER_TOKEN', '')
-PAGE_SIZE      = 40
-MONTHS_BACK    = 12  # janela de publicação para sincronizar
+PAGE_SIZE         = 100
+MONTHS_BACK       = int(os.environ.get('MONTHS_BACK', '12'))   # 0 = sem filtro de data
+PUBLISHER_FILTER  = os.environ.get('PUBLISHER_FILTER', '')     # ex: "Companhia das Letras"
 
 PUBLISHERS = [
     {'label': 'Companhia das Letras', 'search': 'Companhia das Letras'},
@@ -143,14 +144,24 @@ print(f'  {len(existing)} livros já existem\n')
 to_create = []
 to_update = []  # lista de (id, payload)
 
-# Data de corte: MONTHS_BACK meses atrás, formato YYYYMMDD para a API Metabooks
-cutoff = datetime.now(timezone.utc) - timedelta(days=MONTHS_BACK * 30)
-date_from = cutoff.strftime('%Y%m%d')
+# Data de corte (0 = sem filtro)
+if MONTHS_BACK > 0:
+    cutoff = datetime.now(timezone.utc) - timedelta(days=MONTHS_BACK * 30)
+    date_from = cutoff.strftime('%Y%m%d')
+    date_label = f'publicações desde {cutoff.strftime("%d/%m/%Y")}'
+else:
+    date_from = None
+    date_label = 'catálogo completo'
 
-for pub in PUBLISHERS:
-    print(f'Buscando: {pub["label"]} (publicações desde {cutoff.strftime("%d/%m/%Y")})...')
+publishers = [p for p in PUBLISHERS if not PUBLISHER_FILTER or p['label'] == PUBLISHER_FILTER]
+
+for pub in publishers:
+    print(f'Buscando: {pub["label"]} ({date_label})...')
     try:
-        search_query = urllib.parse.quote(f'VL={pub["search"]} AND EJ={date_from}^99991231')
+        base_query = f'VL={pub["search"]}'
+        if date_from:
+            base_query += f' AND EJ={date_from}^99991231'
+        search_query = urllib.parse.quote(base_query)
         page = 0
         count = 0
 
