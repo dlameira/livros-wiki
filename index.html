@@ -354,6 +354,11 @@
     }
   }
 
+  function adaptCover(img) {
+    const ratio = img.naturalWidth / img.naturalHeight;
+    if (ratio > 0.8) img.style.objectFit = 'contain';
+  }
+
   function setFilter(filter, btn) {
     currentFilter = filter;
     document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
@@ -389,7 +394,7 @@
       <div class="book-card" onclick="openDetail(${b.id})">
         <div class="cover-wrap">
           ${b.capa_url
-            ? `<img src="${escHtml(b.capa_url)}" alt="${escHtml(b.titulo)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=cover-placeholder>📖</div>'">`
+            ? `<img src="${escHtml(b.capa_url)}" alt="${escHtml(b.titulo)}" loading="lazy" onload="adaptCover(this)" onerror="this.parentElement.innerHTML='<div class=cover-placeholder>📖</div>'">`
             : '<div class="cover-placeholder">📖</div>'
           }
         </div>
