@@ -311,7 +311,9 @@
 </header>
 
 <div class="filters" id="filters">
-  <button class="pill active" data-pub="all" onclick="setFilter('all', this)">todos</button>
+  <button class="pill" onclick="setFilter('prevenda', this)">em pré-venda</button>
+  <button class="pill active" onclick="setFilter('lancamentos', this)">lançamentos</button>
+  <button class="pill" onclick="setFilter('catalogo', this)">todo catálogo</button>
 </div>
 
 <div class="status" id="status"></div>
@@ -335,7 +337,7 @@
   const DIRECTUS_TOKEN = '73IhvvuNMBy-et-_0Ore5ZH2jo25pnU5';
 
   let allBooks = [];
-  let currentFilter = 'all';
+  let currentFilter = 'lancamentos';
 
   async function init() {
     setStatus('carregando...');
@@ -346,37 +348,39 @@
       );
       const j = await r.json();
       allBooks = j.data || [];
-      buildFilters();
       renderGrid();
-      setStatus(`${allBooks.length} livro${allBooks.length !== 1 ? 's' : ''}`);
     } catch(e) {
       setStatus('erro ao carregar');
     }
   }
 
-  function buildFilters() {
-    const container = document.getElementById('filters');
-    container.innerHTML = '<button class="pill active" data-pub="all" onclick="setFilter(\'all\', this)">todos</button>';
-    const editoras = [...new Set(allBooks.map(b => b.editora).filter(Boolean))].sort();
-    editoras.forEach(ed => {
-      const btn = document.createElement('button');
-      btn.className = 'pill';
-      btn.textContent = ed;
-      btn.dataset.pub = ed;
-      btn.onclick = () => setFilter(ed, btn);
-      container.appendChild(btn);
-    });
-  }
-
-  function setFilter(pub, btn) {
-    currentFilter = pub;
+  function setFilter(filter, btn) {
+    currentFilter = filter;
     document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     renderGrid();
   }
 
+  function filterBooks() {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - 4); cutoff.setHours(0,0,0,0);
+    if (currentFilter === 'prevenda') {
+      return allBooks.filter(b => b.data_publicacao && new Date(b.data_publicacao + 'T12:00:00') > today);
+    }
+    if (currentFilter === 'lancamentos') {
+      return allBooks.filter(b => {
+        if (!b.data_publicacao) return false;
+        const d = new Date(b.data_publicacao + 'T12:00:00');
+        return d >= cutoff && d <= today;
+      });
+    }
+    return allBooks; // catalogo
+  }
+
   function renderGrid() {
-    const books = currentFilter === 'all' ? allBooks : allBooks.filter(b => b.editora === currentFilter);
+    const books = filterBooks();
+    const grid = document.getElementById('grid');
+    setStatus(`${books.length} livro${books.length !== 1 ? 's' : ''}`);
     const grid = document.getElementById('grid');
     if (!books.length) {
       grid.innerHTML = '<div class="empty">nenhum livro encontrado</div>';
