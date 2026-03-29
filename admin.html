@@ -401,7 +401,7 @@ let _grupos = [], _selos = [];
 async function loadSelos() {
   const [gr, se] = await Promise.all([
     GET('/items/grupos_editoriais?sort=nome&limit=100'),
-    GET('/items/selos?sort=nome_display&limit=200&fields=*,grupo.id,grupo.nome,grupo.cor')
+    GET('/items/selos?sort=nome_display&limit=200&fields=id,nome_display,search_metabooks,publisher_mb_id,ativo,grupo.*')
   ]);
   if (!gr || !se) return;
   _grupos = gr.data;
@@ -538,7 +538,7 @@ async function loadStats() {
 // ── SYNC ──────────────────────────────────────────────────────────────────────
 async function loadPublisherChecks() {
   if (!_selos.length) {
-    const se = await GET('/items/selos?sort=nome_display&limit=200&fields=*,grupo.nome,grupo.cor');
+    const se = await GET('/items/selos?sort=nome_display&limit=200&fields=id,nome_display,search_metabooks,ativo,grupo.*');
     if (se) _selos = se.data;
   }
   const el = document.getElementById('publisher-checks');
