@@ -1,0 +1,14 @@
+# Credenciais e memória privada
+_memory.md
+
+# PDFs internos
+*.pdf
+
+# Arquivos temporários
+*.jpg
+*.jpeg
+*.png
+cover_*.jpg
+
+# Claude
+.claude/

@@ -151,10 +151,12 @@ to_create = []
 to_update = []  # lista de (id, payload)
 
 # Data de corte (0 = sem filtro)
+# AD= filtra por lastModificationDate (captura novos E editados)
+# EJ= filtra só por publicationDate (só novos) — não usado mais
 if MONTHS_BACK > 0:
     cutoff = datetime.now(timezone.utc) - timedelta(days=MONTHS_BACK * 30)
     date_from = cutoff.strftime('%Y%m%d')
-    date_label = f'publicações desde {cutoff.strftime("%d/%m/%Y")}'
+    date_label = f'modificados desde {cutoff.strftime("%d/%m/%Y")}'
 else:
     date_from = None
     date_label = 'catálogo completo'
@@ -166,7 +168,7 @@ for pub in publishers:
     try:
         base_query = f'VL={pub["search"]}'
         if date_from:
-            base_query += f' AND EJ={date_from}^99991231'
+            base_query += f' AND AD={date_from}^99991231'
         search_query = urllib.parse.quote(base_query)
         page = 0
         count = 0
