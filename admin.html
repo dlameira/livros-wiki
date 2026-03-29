@@ -576,7 +576,7 @@ function isIndependent(s) {
 async function loadSelos() {
   const [gr, se] = await Promise.all([
     GET('/items/grupos_editoriais?sort=nome&limit=100&fields=id,nome,cor,adb_name_metabooks'),
-    GET('/items/selos?sort=nome_display&limit=200&fields=id,nome_display,search_metabooks,publisher_mb_id,ativo,grupo.*')
+    GET('/items/selos?sort=nome_display&limit=500&fields=id,nome_display,search_metabooks,publisher_mb_id,ativo,grupo.*,total_livros_mb')
   ]);
   if (!gr || !se) return;
   _grupos = gr.data;
@@ -668,18 +668,25 @@ function renderDescobertas() {
     return;
   }
 
+  // Sort: with count first (desc), then alphabetical
+  inativos.sort((a, b) => (b.total_livros_mb || 0) - (a.total_livros_mb || 0) || a.nome_display.localeCompare(b.nome_display));
+
   const grupoOpts = _grupos.filter(g => g.nome !== IND_NOME)
     .map(g => `<option value="${g.id}">${g.nome}</option>`).join('');
 
-  listEl.innerHTML = inativos.map(s => `
+  listEl.innerHTML = inativos.map(s => {
+    const cnt = s.total_livros_mb ? `<span style="color:var(--muted);font-size:.75rem;white-space:nowrap">~${s.total_livros_mb.toLocaleString('pt-BR')} livros</span>` : '';
+    return `
     <div class="descoberta-item">
       <div class="descoberta-nome" title="${s.publisher_mb_id||''}">${s.nome_display}</div>
+      ${cnt}
       <select onchange="assignGrupoDescoberta(${s.id},this.value)" title="Atribuir grupo">
         <option value="">Sem grupo</option>${grupoOpts}
       </select>
       <button class="btn btn-sm" onclick="activateDescoberta(${s.id})">Ativar</button>
       <button class="btn btn-sm btn-danger" onclick="deleteDescoberta(${s.id})" title="Remover">&#x2715;</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function toggleDescobertas() {

@@ -52,9 +52,27 @@ def directus(method, path, data=None):
         return None
 
 
+# ── 0. Garantir campo total_livros_mb no Directus ────────────────────────────
+
+print('Verificando campo total_livros_mb em selos...')
+fields_resp = directus('GET', '/fields/selos')
+existing_fields = {f['field'] for f in (fields_resp or {}).get('data', [])}
+if 'total_livros_mb' not in existing_fields:
+    print('  Criando campo total_livros_mb...')
+    directus('POST', '/fields/selos', {
+        'field': 'total_livros_mb',
+        'type':  'integer',
+        'meta': {'hidden': False, 'interface': 'input', 'readonly': True,
+                 'note': 'Contagem estimada de livros na Metabooks'},
+        'schema': {'is_nullable': True},
+    })
+    print('  Campo criado.')
+else:
+    print('  Campo já existe.')
+
 # ── 1. Selos já existentes no Directus ────────────────────────────────────────
 
-print('Carregando selos existentes no Directus...')
+print('\nCarregando selos existentes no Directus...')
 resp = directus('GET', '/items/selos?fields=nome_display,search_metabooks,publisher_mb_id&limit=500')
 existing_names  = set()
 existing_mb_ids = set()
@@ -73,6 +91,7 @@ print(f'  {len(existing_names)} nomes/buscas já no Directus\n')
 print(f'Amostrando {SAMPLE_PAGES} páginas da Metabooks (LA=por)...')
 publishers = {}   # key → {'name': str, 'mb_id': str|None, 'count': int}
 q = urllib.parse.quote('LA=por')
+total_catalog = 0  # totalElements from Metabooks
 
 half = SAMPLE_PAGES // 2
 total_pages_done = 0
@@ -85,15 +104,18 @@ for direction, pages in [('desc', half), ('asc', SAMPLE_PAGES - half)]:
             print(f'    Página {total_pages_done}/{SAMPLE_PAGES} ({pct:.0f}%) — {len(publishers)} editoras únicas')
             if DISCOVER_LOG_ID:
                 directus('PATCH', f'/items/sync_log/{DISCOVER_LOG_ID}', {
-                    'progresso_msg':      f'Amostrando… {total_pages_done}/{SAMPLE_PAGES} págs, {len(publishers)} editoras',
+                    'progresso_msg':        f'Amostrando… {total_pages_done}/{SAMPLE_PAGES} págs, {len(publishers)} editoras',
                     'editoras_processadas': total_pages_done,
-                    'total_editoras':     SAMPLE_PAGES,
+                    'total_editoras':       SAMPLE_PAGES,
                 })
 
         url = (f'{META_BASE}/products?access_token={META_TOKEN}'
                f'&search={q}&size=100&sort=publicationDate&direction={direction}&page={page}')
         try:
             j = meta_get(url)
+            if not total_catalog and j.get('totalElements'):
+                total_catalog = j['totalElements']
+                print(f'    Total catálogo Metabooks: {total_catalog:,}')
             items = j.get('content', [])
             if not items:
                 print(f'    Sem resultados na página {page} ({direction})')
@@ -120,6 +142,11 @@ for direction, pages in [('desc', half), ('asc', SAMPLE_PAGES - half)]:
 total_unique = len(publishers)
 print(f'\n{total_unique} editoras únicas encontradas na amostra')
 
+# Fator de extrapolação: estimativa de livros reais por editora
+books_sampled = total_pages_done * 100
+extrap = (total_catalog / books_sampled) if books_sampled and total_catalog else 1.0
+print(f'Fator de extrapolação: {extrap:.1f}x  ({books_sampled:,} amostrados / {total_catalog:,} total)\n')
+
 # ── 3. Filtrar desconhecidas com livros suficientes ───────────────────────────
 
 to_add = []
@@ -131,9 +158,10 @@ for key, info in publishers.items():
         continue
     if info['mb_id'] and info['mb_id'] in existing_mb_ids:
         continue
-    to_add.append(info)
+    estimated = max(1, round(info['count'] * extrap))
+    to_add.append({**info, 'estimated': estimated})
 
-to_add.sort(key=lambda x: x['count'], reverse=True)
+to_add.sort(key=lambda x: x['estimated'], reverse=True)
 print(f'{len(to_add)} novas editoras (≥{MIN_BOOKS} livros na amostra) para adicionar\n')
 
 # ── 4. Criar no Directus ──────────────────────────────────────────────────────
@@ -145,10 +173,11 @@ for info in to_add:
         'search_metabooks': info['name'],
         'publisher_mb_id':  info['mb_id'] or None,
         'ativo':            False,
+        'total_livros_mb':  info['estimated'],
     }
     r = directus('POST', '/items/selos', body)
     if r and r.get('data'):
-        print(f'  + {info["name"]} ({info["count"]}× na amostra)')
+        print(f'  + {info["name"]:40} ~{info["estimated"]:>6,} livros')
         added += 1
     else:
         print(f'  ! Erro ao adicionar: {info["name"]}', file=sys.stderr)
@@ -162,7 +191,7 @@ log_data = {
     'finalizado_em':  now_str,
     'status':         'concluido',
     'livros_criados': added,
-    'progresso_msg':  f'{added} novas editoras descobertas ({total_unique} únicas na amostra de {total_pages_done} págs)',
+    'progresso_msg':  f'{added} novas editoras descobertas ({total_unique} únicas, catálogo total: {total_catalog:,})',
 }
 
 if DISCOVER_LOG_ID:
