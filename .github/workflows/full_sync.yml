@@ -1,0 +1,34 @@
+name: Full Sync Metabooks
+
+on:
+  workflow_dispatch:
+    inputs:
+      sync_log_id:
+        description: 'ID do sync_log para retomar (vazio = iniciar novo)'
+        default: ''
+        required: false
+
+jobs:
+  full-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360   # 6 horas máximo
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar dependências
+        run: pip install psycopg2-binary
+
+      - name: Executar sync completo
+        run: python full_sync.py
+        env:
+          DATABASE_URL:     ${{ secrets.DATABASE_URL }}
+          DIRECTUS_URL:     ${{ secrets.DIRECTUS_URL }}
+          DIRECTUS_TOKEN:   ${{ secrets.DIRECTUS_TOKEN }}
+          META_TOKEN:       ${{ secrets.META_TOKEN }}
+          META_COVER_TOKEN: ${{ secrets.META_COVER_TOKEN }}
+          SYNC_LOG_ID:      ${{ inputs.sync_log_id }}

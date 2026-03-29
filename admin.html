@@ -424,6 +424,20 @@ btn, .btn {
         </div>
       </div>
 
+      <div class="card" style="margin-bottom:16px">
+        <h3>Sync Completo</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin-bottom:12px">
+          Importa todos os ~200k livros portugueses da Metabooks diretamente para o banco de dados.
+          Operação única para montar o catálogo inicial — pode levar ~1 hora.
+          Suporta pausa e retomada.
+        </p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="triggerFullSync()" id="full-sync-btn">&#9654;&#9654; Iniciar sync completo</button>
+          <button class="btn" onclick="resumeFullSync()" id="full-sync-resume-btn" style="display:none">&#8635; Retomar</button>
+          <span style="color:var(--muted);font-size:.82rem" id="full-sync-status"></span>
+        </div>
+      </div>
+
       <div class="card">
         <h3>Editoras</h3>
         <div style="display:flex;gap:8px;margin-bottom:8px">
@@ -452,7 +466,11 @@ btn, .btn {
       </div>
 
       <div class="card" id="sync-active-card" style="margin-top:16px;display:none">
-        <h3>Em andamento</h3>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <h3 style="margin:0">Em andamento</h3>
+          <button class="btn btn-sm" id="sync-stop-btn" onclick="stopActiveSync()"
+            style="border-color:var(--red);color:var(--red);padding:3px 10px;font-size:.8rem">&#9632; Parar</button>
+        </div>
         <div style="display:flex;justify-content:space-between;font-size:.83rem;margin-bottom:4px">
           <span id="sync-prog-label">Iniciando...</span>
           <span id="sync-prog-pct" style="color:var(--accent)">0%</span>
@@ -947,9 +965,10 @@ function selectAll(val) {
 
 function onMonthsChange() {}
 
-const GH_REPO             = 'dlameira/livros-wiki';
-const GH_WORKFLOW         = 'sync.yml';
+const GH_REPO              = 'dlameira/livros-wiki';
+const GH_WORKFLOW          = 'sync.yml';
 const GH_WORKFLOW_DISCOVER = 'discover.yml';
+const GH_WORKFLOW_FULLSYNC = 'full_sync.yml';
 
 function saveGhPat(val) {
   if (val) { localStorage.setItem('gh_pat', val); showGhPatStatus(); }
@@ -1076,21 +1095,109 @@ async function triggerDiscover() {
   }
 }
 
+async function triggerFullSync() {
+  const pat = localStorage.getItem('gh_pat');
+  if (!pat) { toast('Configure o GitHub Token primeiro'); return; }
+
+  const btn    = document.getElementById('full-sync-btn');
+  const status = document.getElementById('full-sync-status');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Iniciando...';
+  status.textContent = '';
+
+  const logRes = await POST('/items/sync_log', {
+    iniciado_em: new Date().toISOString(),
+    status:      'running',
+    tipo:        'full_sync',
+    cancelar:    false,
+  });
+  const logId = logRes?.data?.id || '';
+
+  const r = await fetch(
+    `https://api.github.com/repos/${GH_REPO}/actions/workflows/${GH_WORKFLOW_FULLSYNC}/dispatches`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${pat}`,
+        'Accept':        'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify({ ref: 'master', inputs: { sync_log_id: String(logId) } })
+    }
+  );
+
+  btn.disabled = false;
+  btn.innerHTML = '&#9654;&#9654; Iniciar sync completo';
+
+  if (r.status === 204) {
+    status.innerHTML = `Rodando &nbsp;<a href="https://github.com/${GH_REPO}/actions" target="_blank" style="color:var(--accent)">ver logs →</a>`;
+    toast('Sync completo iniciado');
+    setTimeout(loadSyncHistory, 3000);
+  } else {
+    status.textContent = `Erro ${r.status} — verifique o token`;
+    if (logId) await PATCH(`/items/sync_log/${logId}`, {status: 'error'});
+    toast('Erro ao iniciar sync completo');
+  }
+}
+
+async function resumeFullSync(syncLogId) {
+  const pat = localStorage.getItem('gh_pat');
+  if (!pat) { toast('Configure o GitHub Token primeiro'); return; }
+
+  const r = await fetch(
+    `https://api.github.com/repos/${GH_REPO}/actions/workflows/${GH_WORKFLOW_FULLSYNC}/dispatches`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${pat}`,
+        'Accept':        'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify({ ref: 'master', inputs: { sync_log_id: String(syncLogId) } })
+    }
+  );
+
+  if (r.status === 204) {
+    await PATCH(`/items/sync_log/${syncLogId}`, {status: 'running', cancelar: false});
+    toast('Retomando sync completo...');
+    setTimeout(loadSyncHistory, 3000);
+  } else {
+    toast(`Erro ${r.status} ao retomar`);
+  }
+}
+
+async function stopActiveSync() {
+  const active = _lastActiveRun;
+  if (!active) return;
+  const btn = document.getElementById('sync-stop-btn');
+  btn.disabled = true;
+  btn.textContent = 'Parando...';
+  await PATCH(`/items/sync_log/${active.id}`, {cancelar: true});
+  toast('Sinal de parada enviado — aguarde o próximo checkpoint');
+  btn.disabled = false;
+  btn.innerHTML = '&#9632; Parar';
+}
+
 let _pollTimer = null;
 let _wasActiveRun = false;
+let _lastActiveRun = null;
 
 async function loadSyncHistory() {
-  const r = await GET('/items/sync_log?sort[]=-iniciado_em&limit=10&fields=id,iniciado_em,finalizado_em,status,editoras,livros_criados,livros_atualizados,total_editoras,editoras_processadas,progresso_msg,months_back,livros_encontrados');
+  const r = await GET('/items/sync_log?sort[]=-iniciado_em&limit=15&fields=id,iniciado_em,finalizado_em,status,tipo,editoras,livros_criados,livros_atualizados,total_editoras,editoras_processadas,progresso_msg,months_back,livros_encontrados,pagina_atual,total_paginas,cancelar');
   if (!r) return;
   const rows = r.data;
   const el = document.getElementById('sync-history-wrap');
   if (!rows.length) { el.innerHTML = '<p style="color:var(--muted);font-size:.85rem">Nenhum sync ainda.</p>'; return; }
 
-  // Auto-marcar entradas "running" com mais de 45 min como error
+  // Auto-marcar "running" sem updates recentes como error (45 min para sync/discover, 6h para full_sync)
   for (const row of rows) {
     if (row.status === 'running' && row.iniciado_em) {
       const ageMin = (Date.now() - new Date(row.iniciado_em)) / 60000;
-      if (ageMin > 45) {
+      const limit  = row.tipo === 'full_sync' ? 360 : 45;
+      if (ageMin > limit) {
         PATCH(`/items/sync_log/${row.id}`, {
           status: 'error',
           progresso_msg: 'Timeout — workflow encerrado sem atualizar status',
@@ -1102,22 +1209,31 @@ async function loadSyncHistory() {
 
   // Detecta run ativo
   const active = rows.find(r => r.status === 'running');
+  _lastActiveRun = active || null;
   const card = document.getElementById('sync-active-card');
+
   if (active) {
     card.style.display = 'block';
-    const isDiscover = active.months_back === null || active.months_back === undefined;
-    const total = active.total_editoras || 0;
-    const done  = active.editoras_processadas || 0;
+    const tipo       = active.tipo || (active.months_back == null && !active.editoras?.length ? 'discover' : 'sync');
+    const isFullSync = tipo === 'full_sync';
+    const isDiscover = tipo === 'discover';
+    const total      = isFullSync ? (active.total_paginas || 0) : (active.total_editoras || 0);
+    const done       = isFullSync ? (active.pagina_atual  || 0) : (active.editoras_processadas || 0);
     const encontrados = active.livros_encontrados || 0;
-    const salvando = total > 0;
-    const pct = salvando ? Math.round(done / total * 100) : 0;
+    const hasProgress = total > 0;
+    const pct         = hasProgress ? Math.round(done / total * 100) : 0;
 
-    document.getElementById('sync-prog-fill').style.width = (salvando ? pct : 0) + '%';
-    document.getElementById('sync-prog-pct').textContent  = salvando ? pct + '%' : '';
+    document.getElementById('sync-prog-fill').style.width = (hasProgress ? pct : 0) + '%';
+    document.getElementById('sync-prog-pct').textContent  = hasProgress ? pct + '%' : '';
+
     if (isDiscover) {
       document.getElementById('sync-prog-label').textContent = 'Descobrindo editoras…';
+    } else if (isFullSync) {
+      document.getElementById('sync-prog-label').textContent = hasProgress
+        ? `Página ${done.toLocaleString('pt-BR')} de ${total.toLocaleString('pt-BR')}`
+        : 'Sync completo em andamento…';
     } else {
-      document.getElementById('sync-prog-label').textContent = salvando
+      document.getElementById('sync-prog-label').textContent = hasProgress
         ? `${done.toLocaleString('pt-BR')} de ${total.toLocaleString('pt-BR')} livros`
         : `${encontrados.toLocaleString('pt-BR')} livros encontrados…`;
     }
@@ -1133,28 +1249,51 @@ async function loadSyncHistory() {
     }
   }
 
+  // Botão de retomar (mostra se há run pausado)
+  const paused = rows.find(r => r.status === 'paused' && r.tipo === 'full_sync');
+  const resumeBtn = document.getElementById('full-sync-resume-btn');
+  if (resumeBtn) {
+    if (paused && !active) {
+      resumeBtn.style.display = '';
+      resumeBtn.onclick = () => resumeFullSync(paused.id);
+      document.getElementById('full-sync-status').textContent =
+        `Pausado na pág. ${paused.pagina_atual || '?'}/${paused.total_paginas || '?'}`;
+    } else {
+      resumeBtn.style.display = 'none';
+    }
+  }
+
   el.innerHTML = `<table style="width:100%;border-collapse:collapse" class="sync-history">
     <thead><tr>
       <th>Data</th><th>Tipo</th><th>Status</th><th>Detalhes</th><th>Criados</th><th>Atualizados</th>
     </tr></thead>
-    <tbody>${rows.map(r => {
-      const isDiscover = r.months_back == null && !(r.editoras?.length);
+    <tbody>${rows.map(row => {
+      const tipo = row.tipo ||
+        (row.months_back == null && !row.editoras?.length ? 'discover' : 'sync');
+      const tipoLabel = {full_sync: 'Full Sync', discover: 'Descoberta', sync: 'Sync'}[tipo] || tipo;
+      const detalhes = tipo === 'full_sync'
+        ? `pág. ${row.pagina_atual ?? '?'}/${row.total_paginas ?? '?'} — ${row.progresso_msg || ''}`
+        : tipo === 'discover'
+        ? (row.progresso_msg || '—')
+        : `${(row.editoras||[]).slice(0,3).join(', ')}${(row.editoras||[]).length>3?' …':''}`;
+      const resumeAction = row.status === 'paused' && tipo === 'full_sync'
+        ? `<button class="btn btn-sm" onclick="resumeFullSync(${row.id})" style="padding:2px 8px;font-size:.75rem;margin-left:6px">&#8635;</button>`
+        : '';
       return `<tr>
-      <td>${r.iniciado_em ? new Date(r.iniciado_em).toLocaleString('pt-BR') : '—'}</td>
-      <td><span class="badge badge-gray">${isDiscover ? 'Descoberta' : 'Sync'}</span></td>
-      <td>${statusBadge(r.status)}</td>
-      <td style="color:var(--muted);font-size:.78rem">${isDiscover
-        ? (r.progresso_msg || '—')
-        : `${(r.editoras||[]).slice(0,3).join(', ')}${(r.editoras||[]).length>3?' …':''}`}</td>
-      <td>${r.livros_criados ?? '—'}</td>
-      <td>${r.livros_atualizados ?? '—'}</td>
-    </tr>`;}).join('')}</tbody>
+        <td>${row.iniciado_em ? new Date(row.iniciado_em).toLocaleString('pt-BR') : '—'}</td>
+        <td><span class="badge badge-gray">${tipoLabel}</span></td>
+        <td>${statusBadge(row.status)}${resumeAction}</td>
+        <td style="color:var(--muted);font-size:.78rem;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${detalhes}</td>
+        <td>${row.livros_criados ?? '—'}</td>
+        <td>${row.livros_atualizados ?? '—'}</td>
+      </tr>`;
+    }).join('')}</tbody>
   </table>`;
 }
 
 function statusBadge(s) {
-  const map = {done:'badge-green', concluido:'badge-green', running:'badge-yellow', error:'badge-red', requested:'badge-gray'};
-  const lbl = {done:'Concluído', concluido:'Concluído', running:'Rodando', error:'Erro', requested:'Agendado'};
+  const map = {done:'badge-green', concluido:'badge-green', running:'badge-yellow', paused:'badge-gray', error:'badge-red', requested:'badge-gray'};
+  const lbl = {done:'Concluído', concluido:'Concluído', running:'Rodando', paused:'Pausado', error:'Erro', requested:'Agendado'};
   return `<span class="badge ${map[s]||'badge-gray'}">${lbl[s]||s}</span>`;
 }
 
