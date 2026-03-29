@@ -333,8 +333,23 @@ btn, .btn {
     <!-- TAB: SYNC -->
     <div id="tab-sync" class="tab-panel">
       <h2>Sync</h2>
+
+      <div class="card" style="margin-bottom:16px">
+        <h3>GitHub Actions Token</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin-bottom:10px">
+          Token pessoal do GitHub com permissão <code style="background:var(--bg);padding:1px 5px;border-radius:3px">workflow</code>.
+          Salvo localmente no navegador.
+        </p>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="password" id="gh-pat" placeholder="github_pat_..." autocomplete="off"
+            style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:var(--radius);font-size:.88rem;outline:none;font-family:var(--mono)"
+            oninput="saveGhPat(this.value)">
+          <span id="gh-pat-status" style="font-size:.8rem;color:var(--muted)"></span>
+        </div>
+      </div>
+
       <div class="card">
-        <h3>Selecionar editoras</h3>
+        <h3>Editoras</h3>
         <div style="display:flex;gap:8px;margin-bottom:8px">
           <button class="btn btn-sm" onclick="selectAll(true)">Todas ativas</button>
           <button class="btn btn-sm" onclick="selectAll(false)">Nenhuma</button>
@@ -343,7 +358,7 @@ btn, .btn {
 
         <div class="months-row">
           <label>Período:</label>
-          <select id="months-select" onchange="onMonthsChange()">
+          <select id="months-select">
             <option value="0">Catálogo completo (todos os tempos)</option>
             <option value="1" selected>Último mês</option>
             <option value="3">Últimos 3 meses</option>
@@ -459,7 +474,7 @@ function showTab(name, btn) {
   document.getElementById(`tab-${name}`).classList.add('active');
   btn.classList.add('active');
   if (name === 'stats') loadStats();
-  if (name === 'sync')  { loadSyncHistory(); loadPublisherChecks(); }
+  if (name === 'sync')  { loadSyncHistory(); loadPublisherChecks(); showGhPatStatus(); }
 }
 
 // ── EDITORAS ──────────────────────────────────────────────────────────────────
@@ -768,40 +783,77 @@ function selectAll(val) {
 
 function onMonthsChange() {}
 
+const GH_REPO = 'dlameira/livros-wiki';
+const GH_WORKFLOW = 'sync.yml';
+
+function saveGhPat(val) {
+  if (val) { localStorage.setItem('gh_pat', val); showGhPatStatus(); }
+}
+
+function showGhPatStatus() {
+  const pat = localStorage.getItem('gh_pat') || '';
+  const el  = document.getElementById('gh-pat-status');
+  const inp = document.getElementById('gh-pat');
+  if (pat) {
+    if (inp) inp.value = pat.slice(0,8) + '••••••••••••••••';
+    if (el)  el.textContent = '✓ salvo';
+  } else {
+    if (el)  el.textContent = 'não configurado';
+  }
+}
+
 async function triggerSync() {
-  const selected = [...document.querySelectorAll('#publisher-checks input:checked')].map(c => c.value);
-  const months   = document.getElementById('months-select').value;
+  const pat = localStorage.getItem('gh_pat');
+  if (!pat) { toast('Configure o GitHub Token primeiro'); return; }
 
-  if (!selected.length) { toast('Selecione ao menos uma editora'); return; }
+  const months = document.getElementById('months-select').value;
+  const btn    = document.getElementById('sync-btn');
+  const status = document.getElementById('sync-status');
 
-  const btn = document.getElementById('sync-btn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Aguardando...';
+  btn.innerHTML = '<span class="spinner"></span> Iniciando...';
+  status.textContent = '';
 
-  // Grava sync_request no Directus — sync.py lerá no próximo run
-  await POST('/items/sync_log', {
-    iniciado_em: new Date().toISOString(),
-    status: 'requested',
-    editoras: selected,
-    months_back: Number(months),
-    log: `Sync solicitado via admin em ${new Date().toLocaleString('pt-BR')}\nEditoras: ${selected.join(', ')}\nMONTHS_BACK: ${months}`
+  // Cria entrada no sync_log para rastrear este run
+  const logRes = await POST('/items/sync_log', {
+    iniciado_em:  new Date().toISOString(),
+    status:       'running',
+    months_back:  Number(months),
   });
+  const syncLogId = logRes?.data?.id || '';
 
-  document.getElementById('sync-log-box').style.display = 'block';
-  document.getElementById('sync-log-box').textContent =
-    `Sync agendado para as próximas ${months=='0'?'(catálogo completo)':months+' meses'}\n` +
-    `Editoras: ${selected.join(', ')}\n\n` +
-    `O Railway executa o sync automaticamente a cada 6h (cron).\n` +
-    `Para rodar imediatamente, execute localmente:\n\n` +
-    `MONTHS_BACK=${months} PUBLISHER_FILTER="" python sync.py\n\n` +
-    `Ou para uma editora específica:\n` +
-    `MONTHS_BACK=${months} PUBLISHER_FILTER="${selected[0]}" python sync.py`;
+  // Dispara o workflow no GitHub Actions
+  const r = await fetch(
+    `https://api.github.com/repos/${GH_REPO}/actions/workflows/${GH_WORKFLOW}/dispatches`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${pat}`,
+        'Accept':        'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify({
+        ref: 'master',
+        inputs: { months_back: months, sync_log_id: String(syncLogId) }
+      })
+    }
+  );
 
-  document.getElementById('sync-status').textContent = 'Solicitação registrada no log ✓';
   btn.disabled = false;
   btn.innerHTML = '▶ Disparar sync';
-  loadSyncHistory();
-  toast('Sync registrado');
+
+  if (r.status === 204) {
+    status.innerHTML = `Rodando no GitHub Actions &nbsp;<a href="https://github.com/${GH_REPO}/actions" target="_blank" style="color:var(--accent)">ver logs →</a>`;
+    toast('Sync iniciado');
+    setTimeout(loadSyncHistory, 3000);
+  } else {
+    const err = await r.text();
+    status.textContent = `Erro ${r.status} — verifique o token`;
+    console.error(err);
+    if (syncLogId) await PATCH(`/items/sync_log/${syncLogId}`, {status: 'error'});
+    toast('Erro ao iniciar sync');
+  }
 }
 
 async function loadSyncHistory() {

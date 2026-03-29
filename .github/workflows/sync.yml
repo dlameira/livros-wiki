@@ -1,0 +1,34 @@
+name: Sync Metabooks
+
+on:
+  workflow_dispatch:
+    inputs:
+      months_back:
+        description: 'Meses para trás (0 = catálogo completo)'
+        default: '12'
+        required: true
+      sync_log_id:
+        description: 'ID do registro em sync_log (opcional)'
+        default: ''
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Executar sync
+        run: python sync.py
+        env:
+          DIRECTUS_URL:      ${{ secrets.DIRECTUS_URL }}
+          DIRECTUS_TOKEN:    ${{ secrets.DIRECTUS_TOKEN }}
+          META_TOKEN:        ${{ secrets.META_TOKEN }}
+          META_COVER_TOKEN:  ${{ secrets.META_COVER_TOKEN }}
+          MONTHS_BACK:       ${{ inputs.months_back }}
+          SYNC_LOG_ID:       ${{ inputs.sync_log_id }}
