@@ -125,8 +125,16 @@ btn, .btn {
   cursor: pointer; user-select: none;
 }
 .grupo-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.grupo-nome { flex: 1; font-size: .95rem; }
-.grupo-count { color: var(--muted); font-size: .82rem; }
+.grupo-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.grupo-nome { font-size: .95rem; }
+.grupo-adb { font-size: .75rem; color: var(--muted); font-style: italic; }
+.grupo-adb-input {
+  font-size: .75rem; font-style: italic; color: var(--muted);
+  background: none; border: none; border-bottom: 1px dashed var(--border);
+  outline: none; font-family: var(--font); width: 100%; cursor: text;
+}
+.grupo-adb-input:focus { border-bottom-color: var(--accent); color: var(--text); }
+.grupo-count { color: var(--muted); font-size: .82rem; white-space: nowrap; }
 .grupo-toggle { color: var(--muted); font-size: .8rem; transition: transform .2s; }
 .grupo-body { display: none; padding: 0 16px 14px; border-top: 1px solid var(--border); }
 .grupo-body.open { display: block; }
@@ -135,14 +143,16 @@ btn, .btn {
   display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 8px;
 }
 .selo-tag {
-  display: flex; align-items: center; gap: 6px;
+  display: flex; align-items: flex-start; gap: 6px;
   background: var(--bg); border: 1px solid var(--border);
-  border-radius: 4px; padding: 4px 10px; font-size: .83rem;
+  border-radius: 4px; padding: 5px 10px; font-size: .83rem;
 }
 .selo-tag.inativo { opacity: .45; }
+.selo-tag-body { display: flex; flex-direction: column; gap: 2px; }
+.selo-tag-meta { font-size: .72rem; color: var(--muted); font-family: var(--mono); }
 .selo-tag .toggle-selo {
   background: none; border: none; color: var(--muted); cursor: pointer;
-  font-size: .75rem; padding: 0 2px;
+  font-size: .75rem; padding: 0 2px; margin-top: 1px;
 }
 .selo-tag .toggle-selo:hover { color: var(--accent); }
 
@@ -253,6 +263,7 @@ btn, .btn {
         <h3>Adicionar grupo</h3>
         <div class="card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           <input type="text" id="new-grupo-nome" placeholder="Nome do grupo" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:var(--radius);font-size:.88rem;outline:none;flex:1;min-width:160px">
+          <input type="text" id="new-grupo-adb" placeholder="Razão social Metabooks (adbName)" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:var(--radius);font-size:.88rem;outline:none;flex:2;min-width:200px">
           <input type="color" id="new-grupo-cor" value="#888888" style="height:34px;width:44px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);cursor:pointer">
           <button class="btn btn-primary btn-sm" onclick="addGrupo()">Adicionar grupo</button>
         </div>
@@ -400,7 +411,7 @@ let _grupos = [], _selos = [];
 
 async function loadSelos() {
   const [gr, se] = await Promise.all([
-    GET('/items/grupos_editoriais?sort=nome&limit=100'),
+    GET('/items/grupos_editoriais?sort=nome&limit=100&fields=id,nome,cor,adb_name_metabooks'),
     GET('/items/selos?sort=nome_display&limit=200&fields=id,nome_display,search_metabooks,publisher_mb_id,ativo,grupo.*')
   ]);
   if (!gr || !se) return;
@@ -420,14 +431,24 @@ function renderGrupos() {
     div.innerHTML = `
       <div class="grupo-header" onclick="toggleGrupo(${g.id})">
         <div class="grupo-dot" style="background:${g.cor||'#888'}"></div>
-        <span class="grupo-nome">${g.nome}</span>
+        <div class="grupo-info">
+          <span class="grupo-nome">${g.nome}</span>
+          <input class="grupo-adb-input" value="${g.adb_name_metabooks||''}"
+            placeholder="razão social Metabooks (adbName)"
+            onclick="event.stopPropagation()"
+            onblur="saveGrupoAdb(${g.id}, this.value)"
+            onkeydown="if(event.key==='Enter'){this.blur()}">
+        </div>
         <span class="grupo-count">${ativos} ativo${ativos!==1?'s':''} / ${selosG.length} selos</span>
         <span class="grupo-toggle" id="gt-${g.id}">▼</span>
       </div>
       <div class="grupo-body" id="gb-${g.id}">
         <div class="selos-grid">${selosG.map(s => `
           <div class="selo-tag ${s.ativo?'':'inativo'}" id="stag-${s.id}">
-            <span>${s.nome_display}</span>
+            <div class="selo-tag-body">
+              <span>${s.nome_display}</span>
+              <span class="selo-tag-meta">VL=${s.search_metabooks||'—'}${s.publisher_mb_id ? ' · '+s.publisher_mb_id : ''}</span>
+            </div>
             <button class="toggle-selo" title="${s.ativo?'Desativar':'Ativar'}" onclick="toggleSelo(${s.id},${s.ativo})">
               ${s.ativo ? '●' : '○'}
             </button>
@@ -442,6 +463,14 @@ function renderGrupos() {
       </div>`;
     el.appendChild(div);
   }
+}
+
+async function saveGrupoAdb(id, val) {
+  const g = _grupos.find(g => g.id === id);
+  if (!g || g.adb_name_metabooks === val) return;
+  await PATCH(`/items/grupos_editoriais/${id}`, {adb_name_metabooks: val || null});
+  g.adb_name_metabooks = val || null;
+  toast('Razão social salva');
 }
 
 function toggleGrupo(id) {
@@ -473,10 +502,12 @@ async function addSelo(grupoId) {
 
 async function addGrupo() {
   const nome = document.getElementById('new-grupo-nome').value.trim();
+  const adb  = document.getElementById('new-grupo-adb').value.trim();
   const cor  = document.getElementById('new-grupo-cor').value;
   if (!nome) { toast('Nome obrigatório'); return; }
-  await POST('/items/grupos_editoriais', {nome, cor, ativo: true});
+  await POST('/items/grupos_editoriais', {nome, cor, ativo: true, adb_name_metabooks: adb||null});
   document.getElementById('new-grupo-nome').value = '';
+  document.getElementById('new-grupo-adb').value  = '';
   await loadSelos();
   toast('Grupo criado');
 }
