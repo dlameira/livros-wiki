@@ -156,8 +156,20 @@ else:
 
 publishers = [p for p in PUBLISHERS if not PUBLISHER_FILTER or p['label'] == PUBLISHER_FILTER]
 
-for pub in publishers:
+# Registra total de editoras para barra de progresso
+if SYNC_LOG_ID:
+    directus('PATCH', f'/items/sync_log/{SYNC_LOG_ID}', {
+        'total_editoras': len(publishers),
+        'editoras_processadas': 0,
+    })
+
+for pub_idx, pub in enumerate(publishers):
     print(f'Buscando: {pub["label"]} ({date_label})...')
+    if SYNC_LOG_ID:
+        directus('PATCH', f'/items/sync_log/{SYNC_LOG_ID}', {
+            'editoras_processadas': pub_idx,
+            'progresso_msg': f'Buscando {pub["label"]}...',
+        })
     try:
         base_query = f'VL={pub["search"]}'
         if date_from:
@@ -216,6 +228,11 @@ for pub in publishers:
             page += 1
 
         print(f'  {count} livros encontrados')
+        if SYNC_LOG_ID:
+            directus('PATCH', f'/items/sync_log/{SYNC_LOG_ID}', {
+                'editoras_processadas': pub_idx + 1,
+                'progresso_msg': f'{pub["label"]}: {count} livros',
+            })
 
     except Exception as e:
         print(f'  ERRO: {e}', file=sys.stderr)
