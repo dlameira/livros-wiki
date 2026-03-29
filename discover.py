@@ -15,13 +15,16 @@ Variáveis de ambiente:
 
 import json
 import os
+import re
 import sys
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf-8', buffering=1)
     sys.stderr = open(sys.stderr.fileno(), mode='w', encoding='utf-8', buffering=1)
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 DIRECTUS_URL    = os.environ.get('DIRECTUS_URL', 'https://directus-production-afdd.up.railway.app')
@@ -31,6 +34,16 @@ META_BASE       = 'https://www.metabooks.com/api/v2'
 SAMPLE_PAGES    = int(os.environ.get('SAMPLE_PAGES', '500'))
 MIN_BOOKS       = int(os.environ.get('MIN_BOOKS', '3'))
 DISCOVER_LOG_ID = os.environ.get('DISCOVER_LOG_ID', '')
+
+
+def normalize_pub(s):
+    """Normaliza nome de editora para comparação fuzzy."""
+    s = unicodedata.normalize('NFD', s.strip().lower())
+    s = ''.join(c for c in s if unicodedata.category(c) != 'Mn')  # remove acentos
+    s = re.sub(r'^(editora|editores|ed\.|grupo editorial|grupo)\s+', '', s)
+    s = re.sub(r'\s+(editora|editores|livros|books|ltda\.?|s\.?a\.?)$', '', s)
+    s = re.sub(r'[^\w\s]', '', s)
+    return re.sub(r'\s+', ' ', s).strip()
 
 
 def meta_get(url):
@@ -79,9 +92,9 @@ existing_mb_ids = set()
 if resp and resp.get('data'):
     for s in resp['data']:
         if s.get('nome_display'):
-            existing_names.add(s['nome_display'].strip().lower())
+            existing_names.add(normalize_pub(s['nome_display']))
         if s.get('search_metabooks'):
-            existing_names.add(s['search_metabooks'].strip().lower())
+            existing_names.add(normalize_pub(s['search_metabooks']))
         if s.get('publisher_mb_id'):
             existing_mb_ids.add(s['publisher_mb_id'])
 print(f'  {len(existing_names)} nomes/buscas já no Directus\n')
@@ -153,8 +166,7 @@ to_add = []
 for key, info in publishers.items():
     if info['count'] < MIN_BOOKS:
         continue
-    name_lower = info['name'].lower()
-    if name_lower in existing_names:
+    if normalize_pub(info['name']) in existing_names:
         continue
     if info['mb_id'] and info['mb_id'] in existing_mb_ids:
         continue
@@ -166,16 +178,9 @@ print(f'{len(to_add)} novas editoras (≥{MIN_BOOKS} livros na amostra) para adi
 
 # ── 4. Contar livros exatos por editora na Metabooks ─────────────────────────
 
-print(f'Contando livros exatos nas {len(to_add)} editoras...')
-for i, info in enumerate(to_add):
-    if i % 20 == 0:
-        print(f'  {i}/{len(to_add)}...')
-        if DISCOVER_LOG_ID:
-            directus('PATCH', f'/items/sync_log/{DISCOVER_LOG_ID}', {
-                'progresso_msg':        f'Contando livros… {i}/{len(to_add)} editoras',
-                'editoras_processadas': SAMPLE_PAGES + i,
-                'total_editoras':       SAMPLE_PAGES + len(to_add),
-            })
+print(f'Contando livros exatos nas {len(to_add)} editoras (paralelo)...')
+
+def fetch_count(info):
     try:
         if info['mb_id']:
             q_count = urllib.parse.quote(f'PB={info["mb_id"]}&LA=por')
@@ -184,10 +189,26 @@ for i, info in enumerate(to_add):
         url = (f'{META_BASE}/products?access_token={META_TOKEN}'
                f'&search={q_count}&size=1&sort=publicationDate&direction=desc')
         j = meta_get(url)
-        info['total'] = j.get('totalElements', info['estimated'])
+        return info, j.get('totalElements', info['estimated'])
     except Exception as e:
         print(f'  ! Erro ao contar {info["name"]}: {e}', file=sys.stderr)
-        info['total'] = info['estimated']
+        return info, info['estimated']
+
+done_count = 0
+with ThreadPoolExecutor(max_workers=10) as executor:
+    futures = {executor.submit(fetch_count, inf): inf for inf in to_add}
+    for future in as_completed(futures):
+        inf, total = future.result()
+        inf['total'] = total
+        done_count += 1
+        if done_count % 20 == 0:
+            print(f'  {done_count}/{len(to_add)}...')
+            if DISCOVER_LOG_ID:
+                directus('PATCH', f'/items/sync_log/{DISCOVER_LOG_ID}', {
+                    'progresso_msg':        f'Contando livros… {done_count}/{len(to_add)} editoras',
+                    'editoras_processadas': SAMPLE_PAGES + done_count,
+                    'total_editoras':       SAMPLE_PAGES + len(to_add),
+                })
 
 to_add.sort(key=lambda x: x['total'], reverse=True)
 print(f'\nTop 10 novas editoras:')

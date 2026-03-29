@@ -154,7 +154,13 @@ else:
     date_from = None
     date_label = 'catálogo completo'
 
-publishers = [p for p in PUBLISHERS if not PUBLISHER_FILTER or p['label'] == PUBLISHER_FILTER]
+if PUBLISHER_FILTER:
+    _filter_set = {s.strip().lower() for s in PUBLISHER_FILTER.split(',') if s.strip()}
+    publishers = [p for p in PUBLISHERS
+                  if p['search'].lower() in _filter_set or p['label'].lower() in _filter_set]
+    print(f'  Filtrando por: {", ".join(p["label"] for p in publishers)}\n')
+else:
+    publishers = list(PUBLISHERS)
 
 _livros_encontrados = 0
 

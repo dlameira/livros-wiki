@@ -1000,7 +1000,12 @@ async function triggerSync() {
       },
       body: JSON.stringify({
         ref: 'master',
-        inputs: { months_back: months, sync_log_id: String(syncLogId) }
+        inputs: {
+          months_back: months,
+          sync_log_id: String(syncLogId),
+          publishers: [...document.querySelectorAll('#publisher-checks input:checked')]
+                        .map(cb => cb.value).join(','),
+        }
       })
     }
   );
@@ -1075,18 +1080,32 @@ let _pollTimer = null;
 let _wasActiveRun = false;
 
 async function loadSyncHistory() {
-  const r = await GET('/items/sync_log?sort[]=-iniciado_em&limit=10&fields=id,iniciado_em,finalizado_em,status,editoras,livros_criados,livros_atualizados,total_editoras,editoras_processadas,progresso_msg');
+  const r = await GET('/items/sync_log?sort[]=-iniciado_em&limit=10&fields=id,iniciado_em,finalizado_em,status,editoras,livros_criados,livros_atualizados,total_editoras,editoras_processadas,progresso_msg,months_back,livros_encontrados');
   if (!r) return;
   const rows = r.data;
   const el = document.getElementById('sync-history-wrap');
   if (!rows.length) { el.innerHTML = '<p style="color:var(--muted);font-size:.85rem">Nenhum sync ainda.</p>'; return; }
+
+  // Auto-marcar entradas "running" com mais de 45 min como error
+  for (const row of rows) {
+    if (row.status === 'running' && row.iniciado_em) {
+      const ageMin = (Date.now() - new Date(row.iniciado_em)) / 60000;
+      if (ageMin > 45) {
+        PATCH(`/items/sync_log/${row.id}`, {
+          status: 'error',
+          progresso_msg: 'Timeout — workflow encerrado sem atualizar status',
+        });
+        row.status = 'error';
+      }
+    }
+  }
 
   // Detecta run ativo
   const active = rows.find(r => r.status === 'running');
   const card = document.getElementById('sync-active-card');
   if (active) {
     card.style.display = 'block';
-    const isDiscover = active.months_back == null && !(active.editoras?.length);
+    const isDiscover = active.months_back === null || active.months_back === undefined;
     const total = active.total_editoras || 0;
     const done  = active.editoras_processadas || 0;
     const encontrados = active.livros_encontrados || 0;
@@ -1096,9 +1115,7 @@ async function loadSyncHistory() {
     document.getElementById('sync-prog-fill').style.width = (salvando ? pct : 0) + '%';
     document.getElementById('sync-prog-pct').textContent  = salvando ? pct + '%' : '';
     if (isDiscover) {
-      document.getElementById('sync-prog-label').textContent = salvando
-        ? `${done.toLocaleString('pt-BR')} de ${total.toLocaleString('pt-BR')} páginas`
-        : 'Descobrindo editoras…';
+      document.getElementById('sync-prog-label').textContent = 'Descobrindo editoras…';
     } else {
       document.getElementById('sync-prog-label').textContent = salvando
         ? `${done.toLocaleString('pt-BR')} de ${total.toLocaleString('pt-BR')} livros`
@@ -1112,7 +1129,7 @@ async function loadSyncHistory() {
     if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
     if (_wasActiveRun) {
       _wasActiveRun = false;
-      loadSelos();  // reload selos — discovery may have added new ones
+      loadSelos();
     }
   }
 
