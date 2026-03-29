@@ -293,10 +293,10 @@ while True:
         ]
 
         values = (
-            (b.get('title') or '—')[:500],
+            (b.get('title') or '—')[:255],
             (b.get('author') or '')[:255],
             pub_name[:255] if pub_name else '',
-            capa_url,
+            capa_url[:255],
             strip_html(b.get('mainDescription') or b.get('shortDescription')),
             strip_html(b.get('biographicalNote')),
             psycopg2.extras.Json(contributors) if contributors else None,
