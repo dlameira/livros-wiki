@@ -116,56 +116,87 @@ btn, .btn {
 .btn-sm { padding: 4px 10px; font-size: .8rem; }
 
 /* ── GRUPOS & SELOS ── */
-.grupo-card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); margin-bottom: 12px; overflow: hidden;
+.selos-layout {
+  display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; align-items: start;
 }
-.grupo-header {
-  display: flex; align-items: center; gap: 12px; padding: 12px 16px;
-  cursor: pointer; user-select: none;
+@media (max-width: 800px) { .selos-layout { grid-template-columns: 1fr; } }
+
+/* Left panel */
+.selos-panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px;
+}
+.selos-all-grid { display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 0 4px; }
+
+/* Seal tag (used in both panels) */
+.selo-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 4px; padding: 5px 11px; font-size: .84rem;
+  cursor: grab; user-select: none; transition: border-color .15s;
+}
+.selo-tag:hover { border-color: var(--accent); }
+.selo-tag.inativo { opacity: .4; }
+.selo-tag.dragging { opacity: .25; cursor: grabbing; }
+.selo-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.toggle-selo {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: .75rem; padding: 0 1px; line-height: 1;
+}
+.toggle-selo:hover { color: var(--accent); }
+
+/* Right panel */
+.grupos-panel { display: flex; flex-direction: column; gap: 10px; }
+.grupo-bucket {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.grupo-bucket-header {
+  display: flex; align-items: center; gap: 10px; padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
 }
 .grupo-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.grupo-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.grupo-nome { font-size: .95rem; }
-.grupo-adb { font-size: .75rem; color: var(--muted); font-style: italic; }
+.grupo-info { flex: 1; min-width: 0; }
+.grupo-nome { font-size: .92rem; display: block; }
 .grupo-adb-input {
-  font-size: .75rem; font-style: italic; color: var(--muted);
-  background: none; border: none; border-bottom: 1px dashed var(--border);
+  font-size: .73rem; font-style: italic; color: var(--muted);
+  background: none; border: none; border-bottom: 1px dashed transparent;
   outline: none; font-family: var(--font); width: 100%; cursor: text;
+  transition: border-color .15s;
 }
+.grupo-adb-input:hover { border-bottom-color: var(--border); }
 .grupo-adb-input:focus { border-bottom-color: var(--accent); color: var(--text); }
-.grupo-count { color: var(--muted); font-size: .82rem; white-space: nowrap; }
-.grupo-toggle { color: var(--muted); font-size: .8rem; transition: transform .2s; }
-.grupo-body { display: none; padding: 0 16px 14px; border-top: 1px solid var(--border); }
-.grupo-body.open { display: block; }
-.grupo-body.drag-over { background: rgba(200,169,110,.08); outline: 2px dashed var(--accent); outline-offset: -4px; }
-
-.selos-grid {
-  display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 8px;
+.grupo-count { color: var(--muted); font-size: .78rem; white-space: nowrap; }
+.grupo-drop-zone {
+  min-height: 44px; padding: 10px 14px;
+  display: flex; flex-wrap: wrap; gap: 7px; align-items: flex-start;
 }
-.selo-tag {
-  display: flex; align-items: flex-start; gap: 6px;
+.grupo-drop-zone.drag-over {
+  background: rgba(200,169,110,.07); outline: 2px dashed var(--accent); outline-offset: -3px;
+}
+.grupo-drop-empty {
+  color: var(--border); font-size: .78rem; align-self: center; pointer-events: none;
+}
+
+/* Seal tag inside group (smaller, no toggle) */
+.selo-tag-sm {
+  display: inline-flex; align-items: center; gap: 5px;
   background: var(--bg); border: 1px solid var(--border);
-  border-radius: 4px; padding: 5px 10px; font-size: .83rem;
+  border-radius: 4px; padding: 3px 9px; font-size: .8rem;
+  cursor: grab; user-select: none; transition: border-color .15s;
 }
-.selo-tag.inativo { opacity: .45; }
-.selo-tag[draggable] { cursor: grab; }
-.selo-tag.dragging { opacity: .3; }
-.selo-tag-body { display: flex; flex-direction: column; gap: 2px; }
-.selo-tag-meta { font-size: .72rem; color: var(--muted); font-family: var(--mono); }
-.selo-tag .toggle-selo {
-  background: none; border: none; color: var(--muted); cursor: pointer;
-  font-size: .75rem; padding: 0 2px; margin-top: 1px;
-}
-.selo-tag .toggle-selo:hover { color: var(--accent); }
+.selo-tag-sm:hover { border-color: var(--accent); }
+.selo-tag-sm.inativo { opacity: .4; }
+.selo-tag-sm.dragging { opacity: .25; }
 
-/* form inline */
-.add-selo-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-.add-selo-row input {
+/* Add forms */
+.add-form-row { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.add-form-row input, .add-form-row select {
   background: var(--bg); border: 1px solid var(--border); color: var(--text);
-  padding: 6px 10px; border-radius: var(--radius); font-size: .83rem; outline: none; flex: 1; min-width: 140px;
+  padding: 6px 10px; border-radius: var(--radius); font-size: .82rem;
+  outline: none; flex: 1; min-width: 120px; font-family: var(--font);
 }
-.add-selo-row input:focus { border-color: var(--accent); }
+.add-form-row input:focus, .add-form-row select:focus { border-color: var(--accent); }
 
 /* ── STATS ── */
 .publisher-bar { margin-bottom: 8px; }
@@ -253,23 +284,43 @@ btn, .btn {
   <main>
     <!-- TAB: GRUPOS & SELOS -->
     <div id="tab-selos" class="tab-panel active">
-      <h2>Grupos & Selos</h2>
-      <p style="color:var(--muted);font-size:.85rem;margin-bottom:20px">
-        Selos <span class="badge badge-green">ativos</span> entram no sync automático.
-        <span class="badge badge-gray">inativos</span> estão cadastrados mas não sincronizam.
+      <h2>Editoras</h2>
+      <p style="color:var(--muted);font-size:.83rem;margin-bottom:18px">
+        <span class="badge badge-green">ativos</span> entram no sync. &nbsp;
+        <span class="badge badge-gray">inativos</span> cadastrados mas não sincronizam. &nbsp;
+        Arraste uma editora para mover entre grupos.
       </p>
-      <div id="grupos-list">
+
+      <div class="selos-layout" id="selos-loading">
         <div style="color:var(--muted);font-size:.88rem"><span class="spinner"></span> Carregando...</div>
       </div>
 
-      <div style="margin-top:20px">
-        <h3>Adicionar grupo</h3>
-        <div class="card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <input type="text" id="new-grupo-nome" placeholder="Nome do grupo" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:var(--radius);font-size:.88rem;outline:none;flex:1;min-width:160px">
-          <input type="text" id="new-grupo-adb" placeholder="Razão social Metabooks (adbName)" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:var(--radius);font-size:.88rem;outline:none;flex:2;min-width:200px">
-          <input type="color" id="new-grupo-cor" value="#888888" style="height:34px;width:44px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);cursor:pointer">
-          <button class="btn btn-primary btn-sm" onclick="addGrupo()">Adicionar grupo</button>
+      <div class="selos-layout" id="selos-layout" style="display:none">
+        <!-- Left: all seals -->
+        <div class="selos-panel">
+          <h3>Todas as editoras</h3>
+          <div class="selos-all-grid" id="selos-all-grid"></div>
+
+          <div class="add-form-row">
+            <input id="new-selo-nome"   placeholder="Nome de exibição">
+            <input id="new-selo-search" placeholder="Busca Metabooks (VL=...)">
+            <input id="new-selo-mbid"   placeholder="MbID" style="max-width:110px">
+            <select id="new-selo-grupo"><option value="">Sem grupo</option></select>
+            <button class="btn btn-sm" onclick="addSelo()">+ Adicionar</button>
+          </div>
         </div>
+
+        <!-- Right: groups -->
+        <div class="grupos-panel" id="grupos-panel"></div>
+      </div>
+
+      <!-- Add group -->
+      <div class="card" style="margin-top:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <h3 style="margin:0;white-space:nowrap">Novo grupo</h3>
+        <input type="text" id="new-grupo-nome" placeholder="Nome do grupo" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:var(--radius);font-size:.85rem;outline:none;flex:1;min-width:140px;font-family:var(--font)">
+        <input type="text" id="new-grupo-adb"  placeholder="Razão social Metabooks (adbName)" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:var(--radius);font-size:.85rem;outline:none;flex:2;min-width:180px;font-family:var(--font)">
+        <input type="color" id="new-grupo-cor" value="#888888" style="height:32px;width:40px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);cursor:pointer">
+        <button class="btn btn-primary btn-sm" onclick="addGrupo()">Adicionar grupo</button>
       </div>
     </div>
 
@@ -420,58 +471,77 @@ async function loadSelos() {
   if (!gr || !se) return;
   _grupos = gr.data;
   _selos  = se.data;
-  renderGrupos();
+  document.getElementById('selos-loading').style.display = 'none';
+  document.getElementById('selos-layout').style.display  = 'grid';
+  render();
 }
 
-function renderGrupos() {
-  const el = document.getElementById('grupos-list');
-  el.innerHTML = '';
-  for (const g of _grupos) {
-    const selosG = _selos.filter(s => s.grupo && s.grupo.id === g.id);
+function render() {
+  renderSelosPanel();
+  renderGruposPanel();
+}
+
+function seloGrupoCor(s) {
+  return s.grupo?.cor || '#555';
+}
+
+function renderSelosPanel() {
+  const grid = document.getElementById('selos-all-grid');
+  grid.innerHTML = _selos.map(s => `
+    <div class="selo-tag ${s.ativo?'':'inativo'}" id="stag-${s.id}"
+         draggable="true"
+         title="VL=${s.search_metabooks||'—'}${s.publisher_mb_id?' · '+s.publisher_mb_id:''}"
+         ondragstart="onDragStart(event,${s.id})" ondragend="onDragEnd(event)">
+      <span class="selo-dot" style="background:${seloGrupoCor(s)}"></span>
+      <span>${s.nome_display}</span>
+      <button class="toggle-selo" title="${s.ativo?'Desativar':'Ativar'}"
+              onclick="event.stopPropagation();toggleSelo(${s.id},${s.ativo})">
+        ${s.ativo ? '●' : '○'}
+      </button>
+    </div>`).join('');
+
+  // populate group selector
+  const sel = document.getElementById('new-selo-grupo');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Sem grupo</option>' +
+    _grupos.map(g => `<option value="${g.id}" ${g.id==cur?'selected':''}>${g.nome}</option>`).join('');
+}
+
+function renderGruposPanel() {
+  const panel = document.getElementById('grupos-panel');
+  panel.innerHTML = _grupos.map(g => {
+    const selosG = _selos.filter(s => s.grupo?.id === g.id);
     const ativos = selosG.filter(s => s.ativo).length;
-    const div = document.createElement('div');
-    div.className = 'grupo-card';
-    div.innerHTML = `
-      <div class="grupo-header" onclick="toggleGrupo(${g.id})">
-        <div class="grupo-dot" style="background:${g.cor||'#888'}"></div>
-        <div class="grupo-info">
-          <span class="grupo-nome">${g.nome}</span>
-          <input class="grupo-adb-input" value="${g.adb_name_metabooks||''}"
-            placeholder="razão social Metabooks (adbName)"
-            onclick="event.stopPropagation()"
-            onblur="saveGrupoAdb(${g.id}, this.value)"
-            onkeydown="if(event.key==='Enter'){this.blur()}">
+    const tagsHtml = selosG.length
+      ? selosG.map(s => `
+        <div class="selo-tag-sm ${s.ativo?'':'inativo'}" id="gstag-${s.id}"
+             draggable="true"
+             title="VL=${s.search_metabooks||'—'}${s.publisher_mb_id?' · '+s.publisher_mb_id:''}"
+             ondragstart="onDragStart(event,${s.id})" ondragend="onDragEnd(event)">
+          ${s.nome_display}
+        </div>`).join('')
+      : '<span class="grupo-drop-empty">Arraste editoras aqui</span>';
+    return `
+      <div class="grupo-bucket">
+        <div class="grupo-bucket-header">
+          <div class="grupo-dot" style="background:${g.cor||'#888'}"></div>
+          <div class="grupo-info">
+            <span class="grupo-nome">${g.nome}</span>
+            <input class="grupo-adb-input" value="${g.adb_name_metabooks||''}"
+              placeholder="razão social Metabooks (adbName)"
+              onblur="saveGrupoAdb(${g.id},this.value)"
+              onkeydown="if(event.key==='Enter')this.blur()">
+          </div>
+          <span class="grupo-count">${ativos}a / ${selosG.length}s</span>
         </div>
-        <span class="grupo-count">${ativos} ativo${ativos!==1?'s':''} / ${selosG.length} selos</span>
-        <span class="grupo-toggle" id="gt-${g.id}">▼</span>
-      </div>
-      <div class="grupo-body" id="gb-${g.id}"
-           ondragover="onDragOver(event,${g.id})"
-           ondragleave="onDragLeave(event)"
-           ondrop="onDrop(event,${g.id})">
-        <div class="selos-grid">${selosG.map(s => `
-          <div class="selo-tag ${s.ativo?'':'inativo'}" id="stag-${s.id}"
-               draggable="true"
-               ondragstart="onDragStart(event,${s.id})"
-               ondragend="onDragEnd(event)">
-            <div class="selo-tag-body">
-              <span>${s.nome_display}</span>
-              <span class="selo-tag-meta">VL=${s.search_metabooks||'—'}${s.publisher_mb_id ? ' · '+s.publisher_mb_id : ''}</span>
-            </div>
-            <button class="toggle-selo" title="${s.ativo?'Desativar':'Ativar'}" onclick="toggleSelo(${s.id},${s.ativo})">
-              ${s.ativo ? '●' : '○'}
-            </button>
-          </div>`).join('')}
-        </div>
-        <div class="add-selo-row">
-          <input type="text" placeholder="Nome exibição" id="add-nome-${g.id}">
-          <input type="text" placeholder="Busca Metabooks (VL=...)" id="add-search-${g.id}">
-          <input type="text" placeholder="MbID (opcional)" id="add-mbid-${g.id}" style="max-width:130px">
-          <button class="btn btn-sm" onclick="addSelo(${g.id})">+ Adicionar selo</button>
+        <div class="grupo-drop-zone" id="gdz-${g.id}"
+             ondragover="onDragOver(event,${g.id})"
+             ondragleave="onDragLeave(event)"
+             ondrop="onDrop(event,${g.id})">
+          ${tagsHtml}
         </div>
       </div>`;
-    el.appendChild(div);
-  }
+  }).join('');
 }
 
 async function saveGrupoAdb(id, val) {
@@ -482,72 +552,74 @@ async function saveGrupoAdb(id, val) {
   toast('Razão social salva');
 }
 
-// ── DRAG & DROP selos entre grupos ────────────────────────────────────────────
+// ── DRAG & DROP ────────────────────────────────────────────────────────────────
 let _dragSeloId = null;
 
 function onDragStart(event, seloId) {
   _dragSeloId = seloId;
   event.dataTransfer.effectAllowed = 'move';
-  setTimeout(() => document.getElementById(`stag-${seloId}`)?.classList.add('dragging'), 0);
+  setTimeout(() => {
+    document.getElementById(`stag-${seloId}`)?.classList.add('dragging');
+    document.getElementById(`gstag-${seloId}`)?.classList.add('dragging');
+  }, 0);
 }
 
-function onDragEnd(event) {
-  if (_dragSeloId) document.getElementById(`stag-${_dragSeloId}`)?.classList.remove('dragging');
-  document.querySelectorAll('.grupo-body.drag-over').forEach(el => el.classList.remove('drag-over'));
+function onDragEnd() {
+  document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
   _dragSeloId = null;
 }
 
 function onDragOver(event, grupoId) {
   event.preventDefault();
   event.dataTransfer.dropEffect = 'move';
-  const body = document.getElementById(`gb-${grupoId}`);
-  if (body && !body.classList.contains('drag-over')) body.classList.add('drag-over');
+  const zone = document.getElementById(`gdz-${grupoId}`);
+  if (zone && !zone.classList.contains('drag-over')) zone.classList.add('drag-over');
 }
 
 function onDragLeave(event) {
-  const body = event.currentTarget;
-  if (!body.contains(event.relatedTarget)) body.classList.remove('drag-over');
+  if (!event.currentTarget.contains(event.relatedTarget))
+    event.currentTarget.classList.remove('drag-over');
 }
 
 async function onDrop(event, grupoId) {
   event.preventDefault();
-  document.querySelectorAll('.grupo-body.drag-over').forEach(el => el.classList.remove('drag-over'));
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
   if (!_dragSeloId) return;
   const s = _selos.find(s => s.id === _dragSeloId);
-  if (!s || (s.grupo && s.grupo.id === grupoId)) return;
+  if (!s || s.grupo?.id === grupoId) return;
   const nomeGrupo = _grupos.find(g => g.id === grupoId)?.nome || grupoId;
   await PATCH(`/items/selos/${_dragSeloId}`, {grupo: grupoId});
   s.grupo = _grupos.find(g => g.id === grupoId);
-  renderGrupos();
+  render();
   toast(`${s.nome_display} → ${nomeGrupo}`);
   _dragSeloId = null;
-}
-
-function toggleGrupo(id) {
-  const body = document.getElementById(`gb-${id}`);
-  const icon = document.getElementById(`gt-${id}`);
-  const open = body.classList.toggle('open');
-  icon.style.transform = open ? 'rotate(180deg)' : '';
 }
 
 async function toggleSelo(id, ativo) {
   await PATCH(`/items/selos/${id}`, {ativo: !ativo});
   const s = _selos.find(s => s.id === id);
   if (s) s.ativo = !ativo;
-  renderGrupos();
+  render();
   loadPublisherChecks();
   toast(ativo ? 'Selo desativado' : 'Selo ativado');
 }
 
-async function addSelo(grupoId) {
-  const nome   = document.getElementById(`add-nome-${grupoId}`).value.trim();
-  const search = document.getElementById(`add-search-${grupoId}`).value.trim();
-  const mbid   = document.getElementById(`add-mbid-${grupoId}`).value.trim();
+async function addSelo() {
+  const nome   = document.getElementById('new-selo-nome').value.trim();
+  const search = document.getElementById('new-selo-search').value.trim();
+  const mbid   = document.getElementById('new-selo-mbid').value.trim();
+  const grupo  = document.getElementById('new-selo-grupo').value;
   if (!nome || !search) { toast('Nome e busca Metabooks obrigatórios'); return; }
-  await POST('/items/selos', {nome_display: nome, search_metabooks: search,
-    publisher_mb_id: mbid||null, grupo: grupoId, ativo: true});
+  await POST('/items/selos', {
+    nome_display: nome, search_metabooks: search,
+    publisher_mb_id: mbid||null, grupo: grupo||null, ativo: true
+  });
+  document.getElementById('new-selo-nome').value   = '';
+  document.getElementById('new-selo-search').value = '';
+  document.getElementById('new-selo-mbid').value   = '';
   await loadSelos();
-  toast('Selo adicionado');
+  toast('Editora adicionada');
 }
 
 async function addGrupo() {
