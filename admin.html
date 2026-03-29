@@ -675,7 +675,7 @@ function renderDescobertas() {
     .map(g => `<option value="${g.id}">${g.nome}</option>`).join('');
 
   listEl.innerHTML = inativos.map(s => {
-    const cnt = s.total_livros_mb ? `<span style="color:var(--muted);font-size:.75rem;white-space:nowrap">~${s.total_livros_mb.toLocaleString('pt-BR')} livros</span>` : '';
+    const cnt = s.total_livros_mb ? `<span style="color:var(--muted);font-size:.75rem;white-space:nowrap">${s.total_livros_mb.toLocaleString('pt-BR')} livros</span>` : '';
     return `
     <div class="descoberta-item">
       <div class="descoberta-nome" title="${s.publisher_mb_id||''}">${s.nome_display}</div>

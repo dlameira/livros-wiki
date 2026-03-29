@@ -164,7 +164,37 @@ for key, info in publishers.items():
 to_add.sort(key=lambda x: x['estimated'], reverse=True)
 print(f'{len(to_add)} novas editoras (≥{MIN_BOOKS} livros na amostra) para adicionar\n')
 
-# ── 4. Criar no Directus ──────────────────────────────────────────────────────
+# ── 4. Contar livros exatos por editora na Metabooks ─────────────────────────
+
+print(f'Contando livros exatos nas {len(to_add)} editoras...')
+for i, info in enumerate(to_add):
+    if i % 20 == 0:
+        print(f'  {i}/{len(to_add)}...')
+        if DISCOVER_LOG_ID:
+            directus('PATCH', f'/items/sync_log/{DISCOVER_LOG_ID}', {
+                'progresso_msg':        f'Contando livros… {i}/{len(to_add)} editoras',
+                'editoras_processadas': SAMPLE_PAGES + i,
+                'total_editoras':       SAMPLE_PAGES + len(to_add),
+            })
+    try:
+        if info['mb_id']:
+            q_count = urllib.parse.quote(f'PB={info["mb_id"]}&LA=por')
+        else:
+            q_count = urllib.parse.quote(f'VL={info["name"]}&LA=por')
+        url = (f'{META_BASE}/products?access_token={META_TOKEN}'
+               f'&search={q_count}&size=1&sort=publicationDate&direction=desc')
+        j = meta_get(url)
+        info['total'] = j.get('totalElements', info['estimated'])
+    except Exception as e:
+        print(f'  ! Erro ao contar {info["name"]}: {e}', file=sys.stderr)
+        info['total'] = info['estimated']
+
+to_add.sort(key=lambda x: x['total'], reverse=True)
+print(f'\nTop 10 novas editoras:')
+for info in to_add[:10]:
+    print(f'  {info["name"]:40} {info["total"]:>6,} livros')
+
+# ── 5. Criar no Directus ──────────────────────────────────────────────────────
 
 added = 0
 for info in to_add:
@@ -173,11 +203,11 @@ for info in to_add:
         'search_metabooks': info['name'],
         'publisher_mb_id':  info['mb_id'] or None,
         'ativo':            False,
-        'total_livros_mb':  info['estimated'],
+        'total_livros_mb':  info['total'],
     }
     r = directus('POST', '/items/selos', body)
     if r and r.get('data'):
-        print(f'  + {info["name"]:40} ~{info["estimated"]:>6,} livros')
+        print(f'  + {info["name"]:40} {info["total"]:>6,} livros')
         added += 1
     else:
         print(f'  ! Erro ao adicionar: {info["name"]}', file=sys.stderr)
@@ -191,7 +221,7 @@ log_data = {
     'finalizado_em':  now_str,
     'status':         'concluido',
     'livros_criados': added,
-    'progresso_msg':  f'{added} novas editoras descobertas ({total_unique} únicas, catálogo total: {total_catalog:,})',
+    'progresso_msg':  f'{added} novas editoras adicionadas ({total_unique} únicas no catálogo de {total_catalog:,} livros)',
 }
 
 if DISCOVER_LOG_ID:
