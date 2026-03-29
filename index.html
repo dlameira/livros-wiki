@@ -468,6 +468,7 @@
   let allGrupos   = []; // [{nome, cor, editoras:[]}]
   let selectedEditoras = new Set();
   let selectedGrupos   = new Set(); // nomes dos grupos selecionados
+  let currentPreset = 'lancamentos';
   let dateFrom = null;
   let dateTo   = null;
 
@@ -515,6 +516,7 @@
   }
 
   function setPreset(name, btn) {
+    currentPreset = name;
     const today = new Date();
     if (name === 'prevenda') {
       const from = new Date(today); from.setDate(today.getDate() + 1);
@@ -530,10 +532,11 @@
     setDateSelects(dateFrom, dateTo);
     document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
     if (btn) btn.classList.add('active');
-    renderGrid();
+    fetchBooks();
   }
 
   function onDateChange() {
+    currentPreset = null;
     document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
     const fm = +document.getElementById('from-month').value;
     const fy = +document.getElementById('from-year').value;
@@ -541,7 +544,7 @@
     const ty = +document.getElementById('to-year').value;
     dateFrom = new Date(fy, fm, 1);
     dateTo   = new Date(ty, tm + 1, 0);
-    renderGrid();
+    fetchBooks();
   }
 
   // ── Grupos editoriais ──────────────────────────────────────────────────────
@@ -671,10 +674,6 @@
 
   function filterBooks() {
     let books = allBooks;
-    if (dateFrom) books = books.filter(b => b.data_publicacao &&
-      new Date(b.data_publicacao + 'T12:00:00') >= dateFrom);
-    if (dateTo)   books = books.filter(b => b.data_publicacao &&
-      new Date(b.data_publicacao + 'T12:00:00') <= dateTo);
     const grupoEditoras = new Set(
       allGrupos.filter(g => selectedGrupos.has(g.nome)).flatMap(g => g.editoras)
     );
@@ -683,14 +682,15 @@
     return books;
   }
 
-  async function init() {
-    buildDateSelects();
-    setPreset('lancamentos', document.querySelector('.pill.active'));
+  async function fetchBooks() {
     setStatus('carregando...');
     try {
-      const r = await fetch(
-        `${DIRECTUS_URL}/items/biblioteca?limit=-1&sort=-data_publicacao&fields=id,isbn,titulo,autor,editora,capa_url,data_publicacao`
-      );
+      let url = `${DIRECTUS_URL}/items/biblioteca?sort=-data_publicacao&fields=id,isbn,titulo,autor,editora,capa_url,data_publicacao`;
+      if (dateFrom) url += `&filter[data_publicacao][_gte]=${dateFrom.toISOString().slice(0, 10)}`;
+      if (dateTo)   url += `&filter[data_publicacao][_lte]=${dateTo.toISOString().slice(0, 10)}`;
+      const rangeDays = (dateTo && dateFrom) ? (dateTo - dateFrom) / 86400000 : 99999;
+      url += (rangeDays > 365) ? '&limit=5000' : '&limit=-1';
+      const r = await fetch(url);
       const j = await r.json();
       const raw = j.data || [];
       const seen = new Set();
@@ -701,10 +701,15 @@
       });
       buildPublisherList();
       renderGrid();
-      loadGrupos();
     } catch(e) {
       setStatus('erro ao carregar');
     }
+  }
+
+  async function init() {
+    buildDateSelects();
+    loadGrupos();
+    setPreset('lancamentos', document.querySelector('.pill.active'));
   }
 
   function onCoverLoad(img) {
