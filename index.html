@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Biblioteca</title>
+  <title>livros.wiki</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -25,9 +25,14 @@
 
     header {
       padding: 32px 48px 0;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
-    header h1 {
+    .header-left h1 {
       font-size: 1.5rem;
       font-weight: normal;
       letter-spacing: 0.06em;
@@ -35,10 +40,27 @@
       margin-bottom: 6px;
     }
 
-    header p {
+    .header-left h1 span { color: var(--accent); }
+
+    .header-left p {
       font-size: 0.82rem;
       color: var(--muted);
     }
+
+    .save-view-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-family: inherit;
+      padding: 5px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .save-view-btn:hover { border-color: #444; color: #aaa; }
+    .save-view-btn.saved { border-color: var(--accent); color: var(--accent); }
 
     .status {
       padding: 16px 48px 0;
@@ -51,7 +73,7 @@
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
       gap: 28px 20px;
-      padding: 24px 48px 80px;
+      padding: 24px 48px 40px;
       align-items: start;
     }
 
@@ -121,6 +143,19 @@
       color: #333;
       padding: 80px 0;
       font-size: 0.9rem;
+    }
+
+    #scroll-sentinel {
+      height: 80px;
+      margin: 0 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .loading-more {
+      font-size: 0.78rem;
+      color: #333;
     }
 
     /* ── DETALHE ── */
@@ -262,7 +297,6 @@
       align-items: center;
     }
 
-    /* Pills de preset */
     .pill {
       padding: 5px 13px;
       border-radius: 20px;
@@ -277,7 +311,6 @@
     .pill:hover { border-color: #444; color: #aaa; }
     .pill.active { background: var(--accent); border-color: var(--accent); color: #0f0f0f; }
 
-    /* Seletores de data */
     .filter-label {
       font-size: 0.78rem;
       color: var(--muted);
@@ -296,7 +329,6 @@
     .date-sel:focus { border-color: #444; }
     .date-sep { color: var(--muted); font-size: 0.78rem; margin: 0 4px; }
 
-    /* Busca de editora */
     .pub-search-wrap { position: relative; }
     .pub-input {
       background: transparent;
@@ -341,7 +373,6 @@
     .pub-empty { cursor: default; color: #444; }
     .pub-empty:hover { background: transparent; }
 
-    /* Tags de grupos selecionados */
     .grupo-tag {
       display: inline-flex;
       align-items: center;
@@ -361,7 +392,6 @@
     }
     .grupo-tag-remove:hover { opacity: 1; }
 
-    /* Tags de editoras selecionadas */
     .pub-tag {
       display: inline-flex;
       align-items: center;
@@ -410,14 +440,17 @@
 <body>
 
 <header>
-  <h1>biblioteca</h1>
-  <p>livros das editoras selecionadas</p>
+  <div class="header-left">
+    <h1>livros<span>.</span>wiki</h1>
+    <p>catálogo de livros em português</p>
+  </div>
+  <button class="save-view-btn" id="save-view-btn" onclick="toggleSaveView()">salvar vista</button>
 </header>
 
 <div class="filters-row" id="filters-category">
-  <button class="pill" onclick="setPreset('prevenda',this)">pré-venda</button>
-  <button class="pill active" onclick="setPreset('lancamentos',this)">lançamentos</button>
-  <button class="pill" onclick="setPreset('tudo',this)">tudo</button>
+  <button class="pill" data-preset="prevenda" onclick="setPreset('prevenda',this)">pré-venda</button>
+  <button class="pill active" data-preset="lancamentos" onclick="setPreset('lancamentos',this)">lançamentos</button>
+  <button class="pill" data-preset="tudo" onclick="setPreset('tudo',this)">tudo</button>
 </div>
 <div class="filters-row" id="filters-date">
   <span class="filter-label">de</span>
@@ -447,6 +480,7 @@
 <div class="status" id="status"></div>
 
 <div class="grid" id="grid"></div>
+<div id="scroll-sentinel"></div>
 
 <!-- Detalhe -->
 <div class="detail-overlay" id="detail-overlay">
@@ -461,18 +495,36 @@
 </div>
 
 <script>
-  const DIRECTUS_URL   = 'https://directus-production-afdd.up.railway.app';
+  const DIRECTUS_URL = 'https://directus-production-afdd.up.railway.app';
+  const PAGE_LIMIT   = 500;
+  const STORAGE_KEY  = 'livros_wiki_view';
 
-  let allBooks    = [];
-  let allEditoras = [];
-  let allGrupos   = []; // [{nome, cor, editoras:[]}]
+  // ── State ──────────────────────────────────────────────────────────────────
+  let allBooks         = [];
+  let seenTitles       = new Set();
+  let allEditoras      = [];
+  let allGrupos        = [];
   let selectedEditoras = new Set();
-  let selectedGrupos   = new Set(); // nomes dos grupos selecionados
-  let currentPreset = 'lancamentos';
-  let dateFrom = null;
-  let dateTo   = null;
+  let selectedGrupos   = new Set();
+  let currentPreset    = 'lancamentos';
+  let dateFrom         = null;
+  let dateTo           = null;
+
+  // Pagination
+  let currentPage  = 1;
+  let totalCount   = null;
+  let isFetching   = false;
+  let hasMore      = true;
 
   const MONTHS_PT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+  // ── Scroll infinito ────────────────────────────────────────────────────────
+
+  const scrollObserver = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting && !isFetching && hasMore) {
+      fetchBooks(false);
+    }
+  }, { rootMargin: '500px' });
 
   // ── Datas ──────────────────────────────────────────────────────────────────
 
@@ -504,14 +556,14 @@
       fromYear.value  = from.getFullYear();
     } else {
       fromMonth.value = 0;
-      fromYear.value  = fromYear.options[0].value; // primeiro ano disponível
+      fromYear.value  = fromYear.options[0].value;
     }
     if (to) {
       toMonth.value = to.getMonth();
       toYear.value  = to.getFullYear();
     } else {
       toMonth.value = 11;
-      toYear.value  = toYear.options[toYear.options.length - 1].value; // último ano
+      toYear.value  = toYear.options[toYear.options.length - 1].value;
     }
   }
 
@@ -532,7 +584,7 @@
     setDateSelects(dateFrom, dateTo);
     document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
     if (btn) btn.classList.add('active');
-    fetchBooks();
+    fetchBooks(true);
   }
 
   function onDateChange() {
@@ -544,7 +596,7 @@
     const ty = +document.getElementById('to-year').value;
     dateFrom = new Date(fy, fm, 1);
     dateTo   = new Date(ty, tm + 1, 0);
-    fetchBooks();
+    fetchBooks(true);
   }
 
   // ── Grupos editoriais ──────────────────────────────────────────────────────
@@ -556,12 +608,15 @@
       );
       const j = await r.json();
       const map = {};
+      allEditoras = [];
       for (const s of (j.data || [])) {
+        if (s.nome_display) allEditoras.push(s.nome_display);
         if (!s.grupo || s.grupo.nome === 'Independente') continue;
         const nome = s.grupo.nome;
         if (!map[nome]) map[nome] = { nome, cor: s.grupo.cor || '#888', editoras: [] };
         map[nome].editoras.push(s.nome_display);
       }
+      allEditoras.sort();
       allGrupos = Object.values(map).sort((a,b) => a.nome.localeCompare(b.nome));
     } catch(e) {}
   }
@@ -594,7 +649,7 @@
     else selectedGrupos.add(nome);
     openGrupoDropdown();
     renderGrupoTags();
-    renderGrid();
+    fetchBooks(true);
   }
 
   function renderGrupoTags() {
@@ -621,10 +676,6 @@
 
   // ── Editoras ───────────────────────────────────────────────────────────────
 
-  function buildPublisherList() {
-    allEditoras = [...new Set(allBooks.map(b => b.editora).filter(Boolean))].sort();
-  }
-
   function onPubInput(query) { openPubDropdown(query); }
 
   function openPubDropdown(query) {
@@ -649,7 +700,7 @@
     else selectedEditoras.add(name);
     openPubDropdown();
     renderPublisherTags();
-    renderGrid();
+    fetchBooks(true);
   }
 
   function renderPublisherTags() {
@@ -670,50 +721,135 @@
     if (!document.getElementById('pub-search-wrap').contains(e.target)) closePubDropdown();
   });
 
-  // ── Filter + fetch ─────────────────────────────────────────────────────────
+  // ── Fetch + Paginação ──────────────────────────────────────────────────────
 
-  function filterBooks() {
-    let books = allBooks;
-    const grupoEditoras = new Set(
-      allGrupos.filter(g => selectedGrupos.has(g.nome)).flatMap(g => g.editoras)
-    );
-    if (selectedEditoras.size > 0 || grupoEditoras.size > 0)
-      books = books.filter(b => selectedEditoras.has(b.editora) || grupoEditoras.has(b.editora));
-    return books;
+  function getEditoraFilter() {
+    // Se o usuário selecionou editoras ou grupos explicitamente, usa esses
+    if (selectedEditoras.size > 0 || selectedGrupos.size > 0) {
+      const editoras = new Set([...selectedEditoras]);
+      for (const g of allGrupos) {
+        if (selectedGrupos.has(g.nome)) {
+          for (const e of g.editoras) editoras.add(e);
+        }
+      }
+      return editoras;
+    }
+    // Padrão: só editoras ativas (carregadas via loadGrupos)
+    return new Set(allEditoras);
   }
 
-  async function fetchBooks() {
-    setStatus('carregando...');
+  async function fetchBooks(reset = true) {
+    if (reset) {
+      currentPage = 1;
+      allBooks = [];
+      seenTitles.clear();
+      hasMore = true;
+      totalCount = null;
+      document.getElementById('grid').innerHTML = '';
+      scrollObserver.disconnect();
+    }
+    if (!hasMore || isFetching) return;
+    isFetching = true;
+
+    if (reset) setStatus('carregando…');
+    else setStatus(`${allBooks.length.toLocaleString('pt-BR')} livros · carregando mais…`);
+
+    let url = `${DIRECTUS_URL}/items/biblioteca?sort=-data_publicacao`
+            + `&fields=id,isbn,titulo,autor,editora,capa_url,data_publicacao`
+            + `&limit=${PAGE_LIMIT}&page=${currentPage}&meta=total_count`;
+
+    if (dateFrom) url += `&filter[data_publicacao][_gte]=${dateFrom.toISOString().slice(0, 10)}`;
+    if (dateTo)   url += `&filter[data_publicacao][_lte]=${dateTo.toISOString().slice(0, 10)}`;
+
+    const editoraFilter = getEditoraFilter();
+    for (const e of editoraFilter) {
+      url += `&filter[editora][_in][]=${encodeURIComponent(e)}`;
+    }
+
     try {
-      let url = `${DIRECTUS_URL}/items/biblioteca?sort=-data_publicacao&fields=id,isbn,titulo,autor,editora,capa_url,data_publicacao`;
-      if (dateFrom) url += `&filter[data_publicacao][_gte]=${dateFrom.toISOString().slice(0, 10)}`;
-      if (dateTo)   url += `&filter[data_publicacao][_lte]=${dateTo.toISOString().slice(0, 10)}`;
-      const rangeDays = (dateTo && dateFrom) ? (dateTo - dateFrom) / 86400000 : 99999;
-      url += (rangeDays > 365) ? '&limit=5000' : '&limit=-1';
       const r = await fetch(url);
       const j = await r.json();
       const raw = j.data || [];
-      const seen = new Set();
-      allBooks = raw.filter(b => {
+      totalCount = j.meta?.total_count ?? null;
+
+      const newBooks = raw.filter(b => {
         const key = (b.titulo || '').toLowerCase().trim();
-        if (seen.has(key)) return false;
-        seen.add(key); return true;
+        if (seenTitles.has(key)) return false;
+        seenTitles.add(key);
+        return true;
       });
-      buildPublisherList();
-      renderGrid();
+
+      allBooks = [...allBooks, ...newBooks];
+      hasMore = raw.length === PAGE_LIMIT;
+      currentPage++;
+
+      if (reset) {
+        renderGrid();
+      } else {
+        appendBooks(newBooks);
+      }
+
+      updateStatus();
+
+      if (hasMore) {
+        scrollObserver.observe(document.getElementById('scroll-sentinel'));
+      } else {
+        document.getElementById('scroll-sentinel').innerHTML = '';
+      }
     } catch(e) {
       setStatus('erro ao carregar');
+    } finally {
+      isFetching = false;
     }
   }
 
-  async function init() {
-    buildDateSelects();
-    loadGrupos();
-    setPreset('lancamentos', document.querySelector('.pill.active'));
+  function updateStatus() {
+    if (!allBooks.length) { setStatus('nenhum livro encontrado'); return; }
+    if (totalCount && totalCount > allBooks.length) {
+      setStatus(`${allBooks.length.toLocaleString('pt-BR')} de ${totalCount.toLocaleString('pt-BR')} livros`);
+    } else {
+      setStatus(`${allBooks.length.toLocaleString('pt-BR')} livro${allBooks.length !== 1 ? 's' : ''}`);
+    }
   }
 
-  function onCoverLoad(img) {
-    img.style.opacity = '1';
+  // ── Grid ───────────────────────────────────────────────────────────────────
+
+  function bookCardHTML(b) {
+    return `<div class="book-card" onclick="openDetail(${b.id})">
+      <div class="cover-wrap">
+        ${b.capa_url
+          ? `<img data-src="${escHtml(b.capa_url)}" alt="${escHtml(b.titulo)}" onerror="this.parentElement.innerHTML='<div class=cover-placeholder>📖</div>'" onload="this.style.opacity=1">`
+          : '<div class="cover-placeholder">📖</div>'
+        }
+      </div>
+      <div class="card-title">${escHtml(b.titulo)}</div>
+      <div class="card-author">${escHtml(b.autor)}</div>
+    </div>`;
+  }
+
+  function renderGrid() {
+    const grid = document.getElementById('grid');
+    if (!allBooks.length) {
+      grid.innerHTML = '<div class="empty">nenhum livro encontrado</div>';
+      return;
+    }
+    grid.innerHTML = allBooks.map(bookCardHTML).join('');
+    setupLazyLoad();
+  }
+
+  function appendBooks(books) {
+    if (!books.length) return;
+    const grid = document.getElementById('grid');
+    const empty = grid.querySelector('.empty');
+    if (empty) empty.remove();
+    const frag = document.createDocumentFragment();
+    books.forEach(b => {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = bookCardHTML(b);
+      frag.appendChild(wrap.firstElementChild);
+    });
+    grid.appendChild(frag);
+    setupLazyLoad();
   }
 
   let _lazyObserver;
@@ -731,36 +867,62 @@
     document.querySelectorAll('#grid img[data-src]').forEach(img => _lazyObserver.observe(img));
   }
 
-  function renderGrid() {
-    const books = filterBooks();
-    const grid = document.getElementById('grid');
-    setStatus(`${books.length} livro${books.length !== 1 ? 's' : ''}`);
-    if (!books.length) {
-      grid.innerHTML = '<div class="empty">nenhum livro encontrado</div>';
-      return;
-    }
-    grid.innerHTML = books.map((b) => `
-      <div class="book-card" onclick="openDetail(${b.id})">
-        <div class="cover-wrap">
-          ${b.capa_url
-            ? `<img data-src="${escHtml(b.capa_url)}" alt="${escHtml(b.titulo)}" onerror="this.parentElement.innerHTML='<div class=cover-placeholder>📖</div>'" onload="onCoverLoad(this)">`
-            : '<div class="cover-placeholder">📖</div>'
-          }
-        </div>
-        <div class="card-title">${escHtml(b.titulo)}</div>
-        <div class="card-author">${escHtml(b.autor)}</div>
-      </div>
-    `).join('');
-    setupLazyLoad();
+  // ── Vista salva ────────────────────────────────────────────────────────────
+
+  function saveCurrentView() {
+    const view = {
+      preset: currentPreset,
+      editoras: [...selectedEditoras],
+      grupos: [...selectedGrupos],
+      dateFrom: dateFrom ? dateFrom.toISOString() : null,
+      dateTo:   dateTo   ? dateTo.toISOString()   : null,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(view));
   }
+
+  function clearSavedView() {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+
+  function hasSavedView() {
+    return !!localStorage.getItem(STORAGE_KEY);
+  }
+
+  function loadSavedView() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch(e) { return null; }
+  }
+
+  function updateSaveBtn() {
+    const btn = document.getElementById('save-view-btn');
+    if (hasSavedView()) {
+      btn.textContent = 'vista salva ✓';
+      btn.classList.add('saved');
+    } else {
+      btn.textContent = 'salvar vista';
+      btn.classList.remove('saved');
+    }
+  }
+
+  function toggleSaveView() {
+    if (hasSavedView()) {
+      clearSavedView();
+    } else {
+      saveCurrentView();
+    }
+    updateSaveBtn();
+  }
+
+  // ── Detalhe ────────────────────────────────────────────────────────────────
 
   async function openDetail(id) {
     const b = allBooks.find(x => x.id === id);
     if (!b) return;
 
     document.getElementById('detail-cover').innerHTML = b.capa_url
-      ? `<img src="${escHtml(b.capa_url)}" alt="${escHtml(b.titulo)}" onerror="this.parentElement.innerHTML='<div class=detail-cover-placeholder></div>'">`
-      : '<div class="detail-cover-placeholder"></div>';
+      ? `<img src="${escHtml(b.capa_url)}" alt="${escHtml(b.titulo)}" onerror="this.parentElement.innerHTML='<div class=detail-cover-placeholder>📖</div>'">`
+      : '<div class="detail-cover-placeholder">📖</div>';
 
     document.getElementById('detail-header').innerHTML = `
       <div class="detail-publisher-badge">${escHtml(b.editora)}</div>
@@ -805,10 +967,11 @@
   document.getElementById('detail-overlay').addEventListener('click', e => {
     if (e.target === document.getElementById('detail-overlay')) closeDetail();
   });
-
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeDetail();
   });
+
+  // ── Utils ──────────────────────────────────────────────────────────────────
 
   function formatDate(s) {
     if (!s) return '';
@@ -843,6 +1006,35 @@
 
   function setStatus(msg) {
     document.getElementById('status').textContent = msg;
+  }
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+
+  async function init() {
+    buildDateSelects();
+    await loadGrupos();
+
+    const saved = loadSavedView();
+    if (saved) {
+      selectedEditoras = new Set(saved.editoras || []);
+      selectedGrupos   = new Set(saved.grupos   || []);
+      renderPublisherTags();
+      renderGrupoTags();
+    }
+
+    updateSaveBtn();
+
+    if (saved?.preset) {
+      const btn = document.querySelector(`[data-preset="${saved.preset}"]`);
+      setPreset(saved.preset, btn);
+    } else if (saved?.dateFrom && saved?.dateTo) {
+      dateFrom = new Date(saved.dateFrom);
+      dateTo   = new Date(saved.dateTo);
+      setDateSelects(dateFrom, dateTo);
+      fetchBooks(true);
+    } else {
+      setPreset('lancamentos', document.querySelector('[data-preset="lancamentos"]'));
+    }
   }
 
   init();

@@ -254,26 +254,63 @@ btn, .btn {
 .descobertas-chevron { margin-left: auto; color: var(--muted); font-size: .8rem; transition: transform .2s; }
 .descobertas-chevron.open { transform: rotate(90deg); }
 
+.descobertas-controls {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.descobertas-controls input[type=text] {
+  background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  padding: 6px 12px; border-radius: var(--radius); font-size: .82rem;
+  outline: none; font-family: var(--font); flex: 1; min-width: 160px;
+}
+.descobertas-controls input:focus { border-color: var(--accent); }
+.descobertas-controls select {
+  background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  padding: 5px 8px; border-radius: var(--radius); font-size: .82rem;
+  outline: none; font-family: var(--font);
+}
+.desc-sel-count { font-size: .78rem; color: var(--muted); white-space: nowrap; }
+
 .descobertas-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 6px; margin-top: 6px;
+  max-height: 420px; overflow-y: auto;
+  padding-right: 4px;
 }
 .descoberta-item {
-  display: flex; align-items: center; gap: 6px;
+  display: flex; flex-direction: column; gap: 6px;
   background: var(--bg); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 6px 10px; font-size: .83rem;
+  border-radius: var(--radius); padding: 8px 10px; font-size: .83rem;
+  cursor: pointer; transition: border-color .12s;
 }
+.descoberta-item:hover { border-color: #444; }
+.descoberta-item.selected { border-color: var(--accent); background: rgba(200,169,110,.06); }
+.desc-top { display: flex; align-items: baseline; gap: 6px; }
 .descoberta-nome {
   flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  color: var(--muted);
+  color: var(--text); font-size: .84rem;
 }
+.desc-count { font-size: .72rem; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+.desc-bottom { display: flex; gap: 5px; align-items: center; }
 .descoberta-item select {
-  background: var(--bg); border: 1px solid var(--border); color: var(--text);
-  padding: 3px 6px; border-radius: var(--radius); font-size: .78rem;
-  outline: none; font-family: var(--font); max-width: 130px;
+  background: var(--bg); border: 1px solid var(--border); color: var(--muted);
+  padding: 2px 5px; border-radius: var(--radius); font-size: .75rem;
+  outline: none; font-family: var(--font); flex: 1;
 }
 .descoberta-item select:focus { border-color: var(--accent); }
+.desc-btn-ativar {
+  background: none; border: 1px solid var(--green); color: var(--green);
+  padding: 2px 8px; border-radius: var(--radius); font-size: .72rem;
+  cursor: pointer; font-family: var(--font); white-space: nowrap;
+  transition: background .12s;
+}
+.desc-btn-ativar:hover { background: rgba(76,175,125,.15); }
+.desc-btn-del {
+  background: none; border: none; color: #444; font-size: .9rem;
+  cursor: pointer; padding: 0 2px; line-height: 1; transition: color .12s;
+}
+.desc-btn-del:hover { color: var(--red); }
 
 /* ── TOAST ── */
 #toast {
@@ -357,6 +394,17 @@ btn, .btn {
           <span id="descobertas-chevron" class="descobertas-chevron">&#9654;</span>
         </div>
         <div id="descobertas-panel" style="display:none">
+          <div class="descobertas-controls">
+            <input type="text" id="desc-search" placeholder="buscar editora…" oninput="renderDescobertas()">
+            <select id="desc-sort" onchange="renderDescobertas()">
+              <option value="count">por nº de livros</option>
+              <option value="nome">por nome</option>
+            </select>
+            <span class="desc-sel-count" id="desc-sel-count"></span>
+            <button class="btn btn-sm" onclick="activateSelected()" id="desc-ativar-sel-btn" style="display:none;border-color:var(--green);color:var(--green)">Ativar selecionadas</button>
+            <button class="btn btn-sm" onclick="selectAllDesc()">Selec. todas</button>
+            <button class="btn btn-sm" onclick="clearSelDesc()">Limpar seleção</button>
+          </div>
           <div id="descobertas-list" class="descobertas-list">
             <span style="color:var(--muted);font-size:.84rem">Carregando...</span>
           </div>
@@ -594,12 +642,27 @@ function isIndependent(s) {
 async function loadSelos() {
   const [gr, se] = await Promise.all([
     GET('/items/grupos_editoriais?sort=nome&limit=100&fields=id,nome,cor,adb_name_metabooks'),
-    GET('/items/selos?sort=nome_display&limit=500&fields=id,nome_display,search_metabooks,publisher_mb_id,ativo,grupo.*,total_livros_mb')
+    loadAllSelos()
   ]);
   if (!gr || !se) return;
   _grupos = gr.data;
-  _selos  = se.data;
+  _selos  = se;
   renderWorld();
+}
+
+async function loadAllSelos() {
+  // Paginate to load all selos (may exceed 500)
+  const all = [];
+  const PAGE = 500;
+  let page = 1;
+  while (true) {
+    const r = await GET(`/items/selos?sort=nome_display&limit=${PAGE}&page=${page}&fields=id,nome_display,search_metabooks,publisher_mb_id,ativo,grupo.*,total_livros_mb`);
+    if (!r?.data?.length) break;
+    all.push(...r.data);
+    if (r.data.length < PAGE) break;
+    page++;
+  }
+  return all;
 }
 
 function renderWorld() {
@@ -670,41 +733,111 @@ async function saveGrupoAdb(id, val) {
 
 // ── DESCOBERTAS ────────────────────────────────────────────────────────────────
 
+let _descSelected = new Set(); // IDs selecionados
+
+function getDescInativos() {
+  return _selos.filter(s => !s.ativo);
+}
+
 function renderDescobertas() {
-  const inativos = _selos.filter(s => !s.ativo && (!s.grupo || s.grupo.nome === IND_NOME));
-  const countEl  = document.getElementById('descobertas-count');
-  const listEl   = document.getElementById('descobertas-list');
+  const all     = getDescInativos();
+  const countEl = document.getElementById('descobertas-count');
+  const listEl  = document.getElementById('descobertas-list');
   if (!listEl) return;
 
   if (countEl) {
-    countEl.textContent = inativos.length;
-    countEl.className = 'badge ' + (inativos.length > 0 ? 'badge-yellow' : 'badge-gray');
+    countEl.textContent = all.length;
+    countEl.className = 'badge ' + (all.length > 0 ? 'badge-yellow' : 'badge-gray');
   }
 
-  if (!inativos.length) {
+  if (!all.length) {
     listEl.innerHTML = '<p style="color:var(--muted);font-size:.84rem;padding:4px 0">Nenhuma. Use "Descobrir Editoras" no Sync para amostrar o catálogo Metabooks.</p>';
     return;
   }
 
-  // Sort: with count first (desc), then alphabetical
-  inativos.sort((a, b) => (b.total_livros_mb || 0) - (a.total_livros_mb || 0) || a.nome_display.localeCompare(b.nome_display));
+  // Filter by search
+  const q = (document.getElementById('desc-search')?.value || '').toLowerCase();
+  let items = q ? all.filter(s => s.nome_display.toLowerCase().includes(q)) : all;
+
+  // Sort
+  const sort = document.getElementById('desc-sort')?.value || 'count';
+  if (sort === 'count') {
+    items.sort((a, b) => (b.total_livros_mb || 0) - (a.total_livros_mb || 0) || a.nome_display.localeCompare(b.nome_display));
+  } else {
+    items.sort((a, b) => a.nome_display.localeCompare(b.nome_display));
+  }
 
   const grupoOpts = _grupos.filter(g => g.nome !== IND_NOME)
     .map(g => `<option value="${g.id}">${g.nome}</option>`).join('');
 
-  listEl.innerHTML = inativos.map(s => {
-    const cnt = s.total_livros_mb ? `<span style="color:var(--muted);font-size:.75rem;white-space:nowrap">${s.total_livros_mb.toLocaleString('pt-BR')} livros</span>` : '';
-    return `
-    <div class="descoberta-item">
-      <div class="descoberta-nome" title="${s.publisher_mb_id||''}">${s.nome_display}</div>
-      ${cnt}
-      <select onchange="assignGrupoDescoberta(${s.id},this.value)" title="Atribuir grupo">
-        <option value="">Sem grupo</option>${grupoOpts}
-      </select>
-      <button class="btn btn-sm" onclick="activateDescoberta(${s.id})">Ativar</button>
-      <button class="btn btn-sm btn-danger" onclick="deleteDescoberta(${s.id})" title="Remover">&#x2715;</button>
+  listEl.innerHTML = items.map(s => {
+    const cnt  = s.total_livros_mb ? `<span class="desc-count">${s.total_livros_mb.toLocaleString('pt-BR')} livros</span>` : '';
+    const sel  = _descSelected.has(s.id) ? ' selected' : '';
+    return `<div class="descoberta-item${sel}" id="desc-${s.id}" onclick="toggleDescSel(${s.id}, event)">
+      <div class="desc-top">
+        <span class="descoberta-nome" title="${s.publisher_mb_id||s.nome_display}">${s.nome_display}</span>
+        ${cnt}
+      </div>
+      <div class="desc-bottom">
+        <select onchange="assignGrupoDescoberta(${s.id},this.value)" onclick="event.stopPropagation()" title="Atribuir grupo">
+          <option value="">sem grupo</option>${grupoOpts}
+        </select>
+        <button class="desc-btn-ativar" onclick="event.stopPropagation();activateDescoberta(${s.id})">ativar</button>
+        <button class="desc-btn-del" onclick="event.stopPropagation();deleteDescoberta(${s.id})" title="Remover">×</button>
+      </div>
     </div>`;
   }).join('');
+
+  updateDescSelUI();
+}
+
+function toggleDescSel(id, event) {
+  if (_descSelected.has(id)) _descSelected.delete(id);
+  else _descSelected.add(id);
+  const el = document.getElementById(`desc-${id}`);
+  if (el) el.classList.toggle('selected', _descSelected.has(id));
+  updateDescSelUI();
+}
+
+function updateDescSelUI() {
+  const n   = _descSelected.size;
+  const cnt = document.getElementById('desc-sel-count');
+  const btn = document.getElementById('desc-ativar-sel-btn');
+  if (cnt) cnt.textContent = n > 0 ? `${n} selecionada${n !== 1 ? 's' : ''}` : '';
+  if (btn) btn.style.display = n > 0 ? '' : 'none';
+}
+
+function selectAllDesc() {
+  const q = (document.getElementById('desc-search')?.value || '').toLowerCase();
+  getDescInativos()
+    .filter(s => !q || s.nome_display.toLowerCase().includes(q))
+    .forEach(s => _descSelected.add(s.id));
+  renderDescobertas();
+}
+
+function clearSelDesc() {
+  _descSelected.clear();
+  renderDescobertas();
+}
+
+async function activateSelected() {
+  if (!_descSelected.size) return;
+  const ids = [..._descSelected];
+  const btn = document.getElementById('desc-ativar-sel-btn');
+  btn.disabled = true;
+  btn.textContent = 'ativando…';
+  // Batch in groups of 10
+  for (let i = 0; i < ids.length; i += 10) {
+    await Promise.all(ids.slice(i, i + 10).map(id => PATCH(`/items/selos/${id}`, {ativo: true})));
+    ids.slice(i, i + 10).forEach(id => {
+      const s = _selos.find(s => s.id === id);
+      if (s) s.ativo = true;
+    });
+  }
+  _descSelected.clear();
+  renderWorld();
+  loadPublisherChecks();
+  toast(`${ids.length} editora${ids.length !== 1 ? 's' : ''} ativada${ids.length !== 1 ? 's' : ''}`);
 }
 
 function toggleDescobertas() {
@@ -719,6 +852,7 @@ async function activateDescoberta(id) {
   await PATCH(`/items/selos/${id}`, {ativo: true});
   const s = _selos.find(s => s.id === id);
   if (s) s.ativo = true;
+  _descSelected.delete(id);
   renderWorld();
   loadPublisherChecks();
   toast('Editora ativada');
@@ -729,6 +863,7 @@ async function deleteDescoberta(id) {
   if (!confirm(`Remover "${s?.nome_display}"?`)) return;
   await DELETE(`/items/selos/${id}`);
   _selos = _selos.filter(s => s.id !== id);
+  _descSelected.delete(id);
   renderDescobertas();
   toast('Editora removida');
 }
