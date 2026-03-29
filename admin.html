@@ -138,6 +138,7 @@ btn, .btn {
 .grupo-toggle { color: var(--muted); font-size: .8rem; transition: transform .2s; }
 .grupo-body { display: none; padding: 0 16px 14px; border-top: 1px solid var(--border); }
 .grupo-body.open { display: block; }
+.grupo-body.drag-over { background: rgba(200,169,110,.08); outline: 2px dashed var(--accent); outline-offset: -4px; }
 
 .selos-grid {
   display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 8px;
@@ -148,6 +149,8 @@ btn, .btn {
   border-radius: 4px; padding: 5px 10px; font-size: .83rem;
 }
 .selo-tag.inativo { opacity: .45; }
+.selo-tag[draggable] { cursor: grab; }
+.selo-tag.dragging { opacity: .3; }
 .selo-tag-body { display: flex; flex-direction: column; gap: 2px; }
 .selo-tag-meta { font-size: .72rem; color: var(--muted); font-family: var(--mono); }
 .selo-tag .toggle-selo {
@@ -442,9 +445,15 @@ function renderGrupos() {
         <span class="grupo-count">${ativos} ativo${ativos!==1?'s':''} / ${selosG.length} selos</span>
         <span class="grupo-toggle" id="gt-${g.id}">▼</span>
       </div>
-      <div class="grupo-body" id="gb-${g.id}">
+      <div class="grupo-body" id="gb-${g.id}"
+           ondragover="onDragOver(event,${g.id})"
+           ondragleave="onDragLeave(event)"
+           ondrop="onDrop(event,${g.id})">
         <div class="selos-grid">${selosG.map(s => `
-          <div class="selo-tag ${s.ativo?'':'inativo'}" id="stag-${s.id}">
+          <div class="selo-tag ${s.ativo?'':'inativo'}" id="stag-${s.id}"
+               draggable="true"
+               ondragstart="onDragStart(event,${s.id})"
+               ondragend="onDragEnd(event)">
             <div class="selo-tag-body">
               <span>${s.nome_display}</span>
               <span class="selo-tag-meta">VL=${s.search_metabooks||'—'}${s.publisher_mb_id ? ' · '+s.publisher_mb_id : ''}</span>
@@ -471,6 +480,47 @@ async function saveGrupoAdb(id, val) {
   await PATCH(`/items/grupos_editoriais/${id}`, {adb_name_metabooks: val || null});
   g.adb_name_metabooks = val || null;
   toast('Razão social salva');
+}
+
+// ── DRAG & DROP selos entre grupos ────────────────────────────────────────────
+let _dragSeloId = null;
+
+function onDragStart(event, seloId) {
+  _dragSeloId = seloId;
+  event.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => document.getElementById(`stag-${seloId}`)?.classList.add('dragging'), 0);
+}
+
+function onDragEnd(event) {
+  if (_dragSeloId) document.getElementById(`stag-${_dragSeloId}`)?.classList.remove('dragging');
+  document.querySelectorAll('.grupo-body.drag-over').forEach(el => el.classList.remove('drag-over'));
+  _dragSeloId = null;
+}
+
+function onDragOver(event, grupoId) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+  const body = document.getElementById(`gb-${grupoId}`);
+  if (body && !body.classList.contains('drag-over')) body.classList.add('drag-over');
+}
+
+function onDragLeave(event) {
+  const body = event.currentTarget;
+  if (!body.contains(event.relatedTarget)) body.classList.remove('drag-over');
+}
+
+async function onDrop(event, grupoId) {
+  event.preventDefault();
+  document.querySelectorAll('.grupo-body.drag-over').forEach(el => el.classList.remove('drag-over'));
+  if (!_dragSeloId) return;
+  const s = _selos.find(s => s.id === _dragSeloId);
+  if (!s || (s.grupo && s.grupo.id === grupoId)) return;
+  const nomeGrupo = _grupos.find(g => g.id === grupoId)?.nome || grupoId;
+  await PATCH(`/items/selos/${_dragSeloId}`, {grupo: grupoId});
+  s.grupo = _grupos.find(g => g.id === grupoId);
+  renderGrupos();
+  toast(`${s.nome_display} → ${nomeGrupo}`);
+  _dragSeloId = null;
 }
 
 function toggleGrupo(id) {
