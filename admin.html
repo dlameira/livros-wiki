@@ -573,9 +573,10 @@ function onIslandLeave(event) {
 }
 async function onIslandDrop(event, grupoId) {
   event.preventDefault(); event.stopPropagation();
+  const dragId = _dragSeloId;
   onDragEnd();
-  if (!_dragSeloId) return;
-  const s = _selos.find(s => s.id === _dragSeloId);
+  if (!dragId) return;
+  const s = _selos.find(s => s.id === dragId);
   const g = _grupos.find(g => g.id === grupoId);
   if (!s || !g || s.grupo?.id === grupoId) return;
   await PATCH(`/items/selos/${s.id}`, {grupo: grupoId});
@@ -595,9 +596,10 @@ function onTagLeave(event) {
 }
 function onTagDrop(event, targetId) {
   event.preventDefault(); event.stopPropagation();
+  const dragId = _dragSeloId;
   onDragEnd();
-  if (!_dragSeloId || _dragSeloId === targetId) return;
-  _pendingA = _selos.find(s => s.id === _dragSeloId);
+  if (!dragId || dragId === targetId) return;
+  _pendingA = _selos.find(s => s.id === dragId);
   _pendingB = _selos.find(s => s.id === targetId);
   if (!_pendingA || !_pendingB) return;
   document.getElementById('popup-desc').textContent =
@@ -611,9 +613,10 @@ function onTagDrop(event, targetId) {
 // Drop onto world → make independent
 function onWorldDragOver(event) { event.preventDefault(); }
 async function onWorldDrop(event) {
+  const dragId = _dragSeloId;
   onDragEnd();
-  if (!_dragSeloId) return;
-  const s = _selos.find(s => s.id === _dragSeloId);
+  if (!dragId) return;
+  const s = _selos.find(s => s.id === dragId);
   if (!s || isIndependent(s)) return;
   await PATCH(`/items/selos/${s.id}`, {grupo: null});
   s.grupo = null;
