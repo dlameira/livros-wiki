@@ -3,17 +3,12 @@
 """
 Sincroniza livros da Metabooks com o Directus (coleção `biblioteca`).
 
-Deploy no Railway como Cron Job:
-  Comando: python sync.py
-  Schedule: 0 */6 * * *  (a cada 6 horas)
-
 Variáveis de ambiente necessárias:
   DIRECTUS_URL    https://directus-production-afdd.up.railway.app
   DIRECTUS_TOKEN  token do usuário Claudio
   META_TOKEN      token da API Metabooks
 """
 
-import io
 import json
 import os
 import re
@@ -39,24 +34,7 @@ PAGE_SIZE         = 100
 MONTHS_BACK       = int(os.environ.get('MONTHS_BACK', '12'))   # 0 = sem filtro de data
 PUBLISHER_FILTER  = os.environ.get('PUBLISHER_FILTER', '')     # ex: "Companhia das Letras"
 
-PUBLISHERS = [
-    {'label': 'Companhia das Letras', 'search': 'Companhia das Letras'},
-    {'label': 'Seiva',                'search': 'Seiva'},
-    {'label': 'Rocco',                'search': 'Rocco'},
-    {'label': 'Todavia',              'search': 'Todavia'},
-    {'label': 'Fósforo',              'search': 'Fosforo Editora'},
-    {'label': 'Record',               'search': 'Record'},
-    {'label': 'Sextante',             'search': 'Sextante'},
-    {'label': 'Aleph',                'search': 'Aleph'},
-    {'label': 'Antofágica',           'search': 'Antofagica'},
-    {'label': 'Ubu',                  'search': 'Ubu Editora'},
-    {'label': 'Bazar do Tempo',       'search': 'Bazar do Tempo'},
-    {'label': 'Editora 34',           'search': 'Editora 34'},
-    {'label': 'Intrínseca',           'search': 'Intrinseca'},
-    {'label': 'Darkside',             'search': 'Darkside'},
-    {'label': 'Autêntica',            'search': 'Autentica'},
-    {'label': 'Arqueiro',             'search': 'Arqueiro'},
-]
+SYNC_LOG_ID = os.environ.get('SYNC_LOG_ID', '')  # ID do registro em sync_log (opcional)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -128,7 +106,22 @@ def parse_date(s):
     return s[:10] if len(s) >= 10 else None
 
 
-# ── 1. Carregar ISBNs existentes ──────────────────────────────────────────────
+# ── 1. Carregar selos ativos do Directus ──────────────────────────────────────
+
+print('Carregando selos ativos do Directus...')
+_selos_resp = directus('GET', '/items/selos?filter[ativo][_eq]=true&fields=nome_display,search_metabooks&limit=200')
+if not _selos_resp or not _selos_resp.get('data'):
+    print('ERRO: não foi possível carregar selos do Directus', file=sys.stderr)
+    sys.exit(1)
+
+PUBLISHERS = [
+    {'label': s['nome_display'], 'search': s['search_metabooks']}
+    for s in _selos_resp['data']
+    if s.get('search_metabooks')
+]
+print(f'  {len(PUBLISHERS)} selos ativos: {", ".join(p["label"] for p in PUBLISHERS)}\n')
+
+# ── 2. Carregar ISBNs existentes ──────────────────────────────────────────────
 
 print('Carregando ISBNs existentes no Directus...')
 existing = {}  # isbn → id
@@ -145,7 +138,7 @@ while True:
     page += 1
 print(f'  {len(existing)} livros já existem\n')
 
-# ── 2. Buscar livros na Metabooks ─────────────────────────────────────────────
+# ── 3. Buscar livros na Metabooks ─────────────────────────────────────────────
 
 to_create = []
 to_update = []  # lista de (id, payload)
@@ -227,7 +220,7 @@ for pub in publishers:
     except Exception as e:
         print(f'  ERRO: {e}', file=sys.stderr)
 
-# ── 3. Deduplicar por ISBN ────────────────────────────────────────────────────
+# ── 4. Deduplicar por ISBN ────────────────────────────────────────────────────
 
 seen = {}
 for p in to_create:
@@ -239,7 +232,7 @@ for id_, p in to_update:
     seen_upd[p['isbn']] = (id_, p)
 to_update = list(seen_upd.values())
 
-# ── 4. Criar novos ────────────────────────────────────────────────────────────
+# ── 5. Criar novos ────────────────────────────────────────────────────────────
 
 print(f'\nCriando {len(to_create)} novos livros...')
 if to_create:
@@ -249,7 +242,7 @@ if to_create:
         if result:
             print(f'  Lote {i//BATCH+1}: {len(result.get("data", []))} criados')
 
-# ── 5. Atualizar existentes ───────────────────────────────────────────────────
+# ── 6. Atualizar existentes ───────────────────────────────────────────────────
 
 print(f'Atualizando {len(to_update)} livros existentes...')
 if to_update:
@@ -261,4 +254,26 @@ if to_update:
         if result:
             print(f'  Lote {i//BATCH+1}: {len(result.get("data", []))} atualizados')
 
+now_str = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 print(f'\nConcluído em {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")} UTC')
+
+# ── 7. Registrar resultado no sync_log ────────────────────────────────────────
+
+if SYNC_LOG_ID:
+    directus('PATCH', f'/items/sync_log/{SYNC_LOG_ID}', {
+        'finalizado_em':    now_str,
+        'status':           'concluido',
+        'livros_criados':   len(to_create),
+        'livros_atualizados': len(to_update),
+    })
+    print(f'sync_log {SYNC_LOG_ID} atualizado')
+else:
+    editoras_list = [p['label'] for p in PUBLISHERS]
+    directus('POST', '/items/sync_log', {
+        'finalizado_em':    now_str,
+        'status':           'concluido',
+        'editoras':         editoras_list,
+        'months_back':      MONTHS_BACK,
+        'livros_criados':   len(to_create),
+        'livros_atualizados': len(to_update),
+    })
