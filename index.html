@@ -462,7 +462,6 @@
 
 <script>
   const DIRECTUS_URL   = 'https://directus-production-afdd.up.railway.app';
-  const DIRECTUS_TOKEN = '73IhvvuNMBy-et-_0Ore5ZH2jo25pnU5';
 
   let allBooks    = [];
   let allEditoras = [];
@@ -550,8 +549,7 @@
   async function loadGrupos() {
     try {
       const r = await fetch(
-        `${DIRECTUS_URL}/items/selos?fields=nome_display,grupo.nome,grupo.cor&limit=200&filter[ativo][_eq]=true`,
-        { headers: { Authorization: `Bearer ${DIRECTUS_TOKEN}` } }
+        `${DIRECTUS_URL}/items/selos?fields=nome_display,grupo.nome,grupo.cor&limit=200&filter[ativo][_eq]=true`
       );
       const j = await r.json();
       const map = {};
@@ -691,8 +689,7 @@
     setStatus('carregando...');
     try {
       const r = await fetch(
-        `${DIRECTUS_URL}/items/biblioteca?limit=-1&sort=-data_publicacao&fields=id,isbn,titulo,autor,editora,capa_url,sinopse,biografia_autor,contributors,data_publicacao`,
-        { headers: { Authorization: `Bearer ${DIRECTUS_TOKEN}` } }
+        `${DIRECTUS_URL}/items/biblioteca?limit=-1&sort=-data_publicacao&fields=id,isbn,titulo,autor,editora,capa_url,data_publicacao`
       );
       const j = await r.json();
       const raw = j.data || [];
@@ -752,13 +749,13 @@
     setupLazyLoad();
   }
 
-  function openDetail(id) {
+  async function openDetail(id) {
     const b = allBooks.find(x => x.id === id);
     if (!b) return;
 
     document.getElementById('detail-cover').innerHTML = b.capa_url
-      ? `<img src="${escHtml(b.capa_url)}" alt="${escHtml(b.titulo)}" onerror="this.parentElement.innerHTML='<div class=detail-cover-placeholder>📖</div>'">`
-      : '<div class="detail-cover-placeholder">📖</div>';
+      ? `<img src="${escHtml(b.capa_url)}" alt="${escHtml(b.titulo)}" onerror="this.parentElement.innerHTML='<div class=detail-cover-placeholder></div>'">`
+      : '<div class="detail-cover-placeholder"></div>';
 
     document.getElementById('detail-header').innerHTML = `
       <div class="detail-publisher-badge">${escHtml(b.editora)}</div>
@@ -770,18 +767,30 @@
       </div>
     `;
 
-    const contribs = formatContributors(b.contributors);
-    document.getElementById('detail-body').innerHTML = `
-      ${contribs ? `<div class="detail-contributors">${contribs}</div>` : ''}
-      ${b.sinopse
-        ? `<div class="detail-sinopse">${b.sinopse.split('\n').filter(Boolean).map(p => `<p>${escHtml(p)}</p>`).join('')}</div>`
-        : '<div class="detail-sinopse" style="color:#444">sinopse não disponível</div>'
-      }
-      ${b.biografia_autor ? `<div class="detail-bio"><span class="detail-bio-label">sobre o autor</span>${escHtml(b.biografia_autor)}</div>` : ''}
-    `;
-
+    document.getElementById('detail-body').innerHTML =
+      '<div class="detail-sinopse" style="color:#444">carregando...</div>';
     document.getElementById('detail-overlay').classList.add('open');
     window.scrollTo(0, 0);
+
+    try {
+      const r = await fetch(
+        `${DIRECTUS_URL}/items/biblioteca/${id}?fields=sinopse,biografia_autor,contributors`
+      );
+      const j = await r.json();
+      const d = j.data || {};
+      const contribs = formatContributors(d.contributors);
+      document.getElementById('detail-body').innerHTML = `
+        ${contribs ? `<div class="detail-contributors">${contribs}</div>` : ''}
+        ${d.sinopse
+          ? `<div class="detail-sinopse">${d.sinopse.split('\n').filter(Boolean).map(p => `<p>${escHtml(p)}</p>`).join('')}</div>`
+          : '<div class="detail-sinopse" style="color:#444">sinopse não disponível</div>'
+        }
+        ${d.biografia_autor ? `<div class="detail-bio"><span class="detail-bio-label">sobre o autor</span>${escHtml(d.biografia_autor)}</div>` : ''}
+      `;
+    } catch(e) {
+      document.getElementById('detail-body').innerHTML =
+        '<div class="detail-sinopse" style="color:#444">sinopse não disponível</div>';
+    }
   }
 
   function closeDetail() {

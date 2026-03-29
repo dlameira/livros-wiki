@@ -244,6 +244,37 @@ btn, .btn {
 }
 .sync-progress-msg { font-size: .8rem; color: var(--muted); margin-top: 4px; }
 
+/* ── DESCOBERTAS ── */
+.descobertas-header {
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer; user-select: none; padding: 12px 0 8px;
+  border-top: 1px solid var(--border);
+}
+.descobertas-header:hover .descobertas-chevron { color: var(--text); }
+.descobertas-chevron { margin-left: auto; color: var(--muted); font-size: .8rem; transition: transform .2s; }
+.descobertas-chevron.open { transform: rotate(90deg); }
+
+.descobertas-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 6px; margin-top: 6px;
+}
+.descoberta-item {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 6px 10px; font-size: .83rem;
+}
+.descoberta-nome {
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--muted);
+}
+.descoberta-item select {
+  background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  padding: 3px 6px; border-radius: var(--radius); font-size: .78rem;
+  outline: none; font-family: var(--font); max-width: 130px;
+}
+.descoberta-item select:focus { border-color: var(--accent); }
+
 /* ── TOAST ── */
 #toast {
   position: fixed; bottom: 24px; right: 24px;
@@ -316,6 +347,21 @@ btn, .btn {
           </div>
         </div>
       </div>
+
+      <!-- Descobertas: selos inativos descobertos via Metabooks -->
+      <div id="descobertas-wrap" style="margin-top:8px">
+        <div class="descobertas-header" onclick="toggleDescobertas()">
+          <h3 style="margin:0">Descobertas</h3>
+          <span id="descobertas-count" class="badge badge-gray">—</span>
+          <span style="color:var(--muted);font-size:.78rem">editoras inativas — ative para incluir no sync</span>
+          <span id="descobertas-chevron" class="descobertas-chevron">&#9654;</span>
+        </div>
+        <div id="descobertas-panel" style="display:none">
+          <div id="descobertas-list" class="descobertas-list">
+            <span style="color:var(--muted);font-size:.84rem">Carregando...</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- TAB: STATS -->
@@ -355,6 +401,26 @@ btn, .btn {
             style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:var(--radius);font-size:.88rem;outline:none;font-family:var(--mono)"
             oninput="saveGhPat(this.value)">
           <span id="gh-pat-status" style="font-size:.8rem;color:var(--muted)"></span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <h3>Descobrir Editoras</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin-bottom:12px">
+          Amostra o catálogo Metabooks e adiciona editoras desconhecidas ao Directus como inativas,
+          para revisão na aba Grupos &amp; Selos.
+        </p>
+        <div class="months-row" style="flex-wrap:wrap">
+          <label>Páginas:</label>
+          <input type="number" id="discover-pages" value="500" min="50" max="2000" style="width:80px"
+            oninput="document.getElementById('discover-pages-hint').textContent='≈ '+(parseInt(this.value)||0)*100+' livros'">
+          <span id="discover-pages-hint" style="color:var(--muted);font-size:.8rem">≈ 50000 livros</span>
+          <label style="margin-left:8px">Mín. livros:</label>
+          <input type="number" id="discover-min" value="3" min="1" max="100" style="width:60px">
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn" onclick="triggerDiscover()" id="discover-btn">&#9740; Descobrir editoras</button>
+          <span style="color:var(--muted);font-size:.82rem" id="discover-status"></span>
         </div>
       </div>
 
@@ -543,10 +609,11 @@ function renderWorld() {
       </div>`;
   }).join('');
 
-  // Standalone (independent or no group)
-  const standalone = _selos.filter(isIndependent).map(s => seloTagHtml(s, true)).join('');
+  // Standalone: active selos without a real group
+  const standalone = _selos.filter(s => isIndependent(s) && s.ativo).map(s => seloTagHtml(s, true)).join('');
 
   world.innerHTML = islands + standalone;
+  renderDescobertas();
 
   // Group selector in add-selo form
   const sel = document.getElementById('new-selo-grupo');
@@ -581,6 +648,74 @@ async function saveGrupoAdb(id, val) {
   await PATCH(`/items/grupos_editoriais/${id}`, {adb_name_metabooks: val||null});
   g.adb_name_metabooks = val||null;
   toast('Razão social salva');
+}
+
+// ── DESCOBERTAS ────────────────────────────────────────────────────────────────
+
+function renderDescobertas() {
+  const inativos = _selos.filter(s => !s.ativo && (!s.grupo || s.grupo.nome === IND_NOME));
+  const countEl  = document.getElementById('descobertas-count');
+  const listEl   = document.getElementById('descobertas-list');
+  if (!listEl) return;
+
+  if (countEl) {
+    countEl.textContent = inativos.length;
+    countEl.className = 'badge ' + (inativos.length > 0 ? 'badge-yellow' : 'badge-gray');
+  }
+
+  if (!inativos.length) {
+    listEl.innerHTML = '<p style="color:var(--muted);font-size:.84rem;padding:4px 0">Nenhuma. Use "Descobrir Editoras" no Sync para amostrar o catálogo Metabooks.</p>';
+    return;
+  }
+
+  const grupoOpts = _grupos.filter(g => g.nome !== IND_NOME)
+    .map(g => `<option value="${g.id}">${g.nome}</option>`).join('');
+
+  listEl.innerHTML = inativos.map(s => `
+    <div class="descoberta-item">
+      <div class="descoberta-nome" title="${s.publisher_mb_id||''}">${s.nome_display}</div>
+      <select onchange="assignGrupoDescoberta(${s.id},this.value)" title="Atribuir grupo">
+        <option value="">Sem grupo</option>${grupoOpts}
+      </select>
+      <button class="btn btn-sm" onclick="activateDescoberta(${s.id})">Ativar</button>
+      <button class="btn btn-sm btn-danger" onclick="deleteDescoberta(${s.id})" title="Remover">&#x2715;</button>
+    </div>`).join('');
+}
+
+function toggleDescobertas() {
+  const panel   = document.getElementById('descobertas-panel');
+  const chevron = document.getElementById('descobertas-chevron');
+  const open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+  chevron.classList.toggle('open', !open);
+}
+
+async function activateDescoberta(id) {
+  await PATCH(`/items/selos/${id}`, {ativo: true});
+  const s = _selos.find(s => s.id === id);
+  if (s) s.ativo = true;
+  renderWorld();
+  loadPublisherChecks();
+  toast('Editora ativada');
+}
+
+async function deleteDescoberta(id) {
+  const s = _selos.find(s => s.id === id);
+  if (!confirm(`Remover "${s?.nome_display}"?`)) return;
+  await DELETE(`/items/selos/${id}`);
+  _selos = _selos.filter(s => s.id !== id);
+  renderDescobertas();
+  toast('Editora removida');
+}
+
+async function assignGrupoDescoberta(id, grupoId) {
+  const grupoNum = grupoId ? parseInt(grupoId) : null;
+  await PATCH(`/items/selos/${id}`, {grupo: grupoNum});
+  const s = _selos.find(s => s.id === id);
+  if (s) s.grupo = grupoNum ? (_grupos.find(g => g.id === grupoNum) || null) : null;
+  renderDescobertas();
+  renderWorld();
+  toast('Grupo atribuído');
 }
 
 // ── DRAG & DROP ────────────────────────────────────────────────────────────────
@@ -805,8 +940,9 @@ function selectAll(val) {
 
 function onMonthsChange() {}
 
-const GH_REPO = 'dlameira/livros-wiki';
-const GH_WORKFLOW = 'sync.yml';
+const GH_REPO             = 'dlameira/livros-wiki';
+const GH_WORKFLOW         = 'sync.yml';
+const GH_WORKFLOW_DISCOVER = 'discover.yml';
 
 function saveGhPat(val) {
   if (val) { localStorage.setItem('gh_pat', val); showGhPatStatus(); }
@@ -878,7 +1014,58 @@ async function triggerSync() {
   }
 }
 
+async function triggerDiscover() {
+  const pat = localStorage.getItem('gh_pat');
+  if (!pat) { toast('Configure o GitHub Token primeiro'); return; }
+
+  const pages  = document.getElementById('discover-pages').value || '500';
+  const minBks = document.getElementById('discover-min').value  || '3';
+  const btn    = document.getElementById('discover-btn');
+  const status = document.getElementById('discover-status');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Iniciando...';
+  status.textContent = '';
+
+  const logRes = await POST('/items/sync_log', {
+    iniciado_em: new Date().toISOString(),
+    status:      'running',
+  });
+  const logId = logRes?.data?.id || '';
+
+  const r = await fetch(
+    `https://api.github.com/repos/${GH_REPO}/actions/workflows/${GH_WORKFLOW_DISCOVER}/dispatches`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${pat}`,
+        'Accept':        'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify({
+        ref: 'master',
+        inputs: { sample_pages: pages, min_books: minBks, discover_log_id: String(logId) }
+      })
+    }
+  );
+
+  btn.disabled = false;
+  btn.innerHTML = '&#9740; Descobrir editoras';
+
+  if (r.status === 204) {
+    status.innerHTML = `Rodando &nbsp;<a href="https://github.com/${GH_REPO}/actions" target="_blank" style="color:var(--accent)">ver logs →</a>`;
+    toast('Descoberta iniciada');
+    setTimeout(loadSyncHistory, 3000);
+  } else {
+    status.textContent = `Erro ${r.status} — verifique o token`;
+    if (logId) await PATCH(`/items/sync_log/${logId}`, {status: 'error'});
+    toast('Erro ao iniciar descoberta');
+  }
+}
+
 let _pollTimer = null;
+let _wasActiveRun = false;
 
 async function loadSyncHistory() {
   const r = await GET('/items/sync_log?sort[]=-iniciado_em&limit=10&fields=id,iniciado_em,finalizado_em,status,editoras,livros_criados,livros_atualizados,total_editoras,editoras_processadas,progresso_msg');
@@ -892,41 +1079,58 @@ async function loadSyncHistory() {
   const card = document.getElementById('sync-active-card');
   if (active) {
     card.style.display = 'block';
-    const total = active.total_editoras || 0;      // na fase salvar = total livros
-    const done  = active.editoras_processadas || 0; // na fase salvar = livros salvos
+    const isDiscover = active.months_back == null && !(active.editoras?.length);
+    const total = active.total_editoras || 0;
+    const done  = active.editoras_processadas || 0;
     const encontrados = active.livros_encontrados || 0;
     const salvando = total > 0;
     const pct = salvando ? Math.round(done / total * 100) : 0;
 
     document.getElementById('sync-prog-fill').style.width = (salvando ? pct : 0) + '%';
     document.getElementById('sync-prog-pct').textContent  = salvando ? pct + '%' : '';
-    document.getElementById('sync-prog-label').textContent = salvando
-      ? `${done.toLocaleString('pt-BR')} de ${total.toLocaleString('pt-BR')} livros`
-      : `${encontrados.toLocaleString('pt-BR')} livros encontrados…`;
+    if (isDiscover) {
+      document.getElementById('sync-prog-label').textContent = salvando
+        ? `${done.toLocaleString('pt-BR')} de ${total.toLocaleString('pt-BR')} páginas`
+        : 'Descobrindo editoras…';
+    } else {
+      document.getElementById('sync-prog-label').textContent = salvando
+        ? `${done.toLocaleString('pt-BR')} de ${total.toLocaleString('pt-BR')} livros`
+        : `${encontrados.toLocaleString('pt-BR')} livros encontrados…`;
+    }
     document.getElementById('sync-prog-msg').textContent = active.progresso_msg || 'Iniciando...';
     if (!_pollTimer) _pollTimer = setInterval(loadSyncHistory, 4000);
+    _wasActiveRun = true;
   } else {
     card.style.display = 'none';
     if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+    if (_wasActiveRun) {
+      _wasActiveRun = false;
+      loadSelos();  // reload selos — discovery may have added new ones
+    }
   }
 
   el.innerHTML = `<table style="width:100%;border-collapse:collapse" class="sync-history">
     <thead><tr>
-      <th>Data</th><th>Status</th><th>Editoras</th><th>Criados</th><th>Atualizados</th>
+      <th>Data</th><th>Tipo</th><th>Status</th><th>Detalhes</th><th>Criados</th><th>Atualizados</th>
     </tr></thead>
-    <tbody>${rows.map(r => `<tr>
+    <tbody>${rows.map(r => {
+      const isDiscover = r.months_back == null && !(r.editoras?.length);
+      return `<tr>
       <td>${r.iniciado_em ? new Date(r.iniciado_em).toLocaleString('pt-BR') : '—'}</td>
+      <td><span class="badge badge-gray">${isDiscover ? 'Descoberta' : 'Sync'}</span></td>
       <td>${statusBadge(r.status)}</td>
-      <td style="color:var(--muted);font-size:.78rem">${(r.editoras||[]).slice(0,4).join(', ')}${(r.editoras||[]).length>4?' …':''}</td>
+      <td style="color:var(--muted);font-size:.78rem">${isDiscover
+        ? (r.progresso_msg || '—')
+        : `${(r.editoras||[]).slice(0,3).join(', ')}${(r.editoras||[]).length>3?' …':''}`}</td>
       <td>${r.livros_criados ?? '—'}</td>
       <td>${r.livros_atualizados ?? '—'}</td>
-    </tr>`).join('')}</tbody>
+    </tr>`;}).join('')}</tbody>
   </table>`;
 }
 
 function statusBadge(s) {
-  const map = {done:'badge-green', running:'badge-yellow', error:'badge-red', requested:'badge-gray'};
-  const lbl = {done:'Concluído', running:'Rodando', error:'Erro', requested:'Agendado'};
+  const map = {done:'badge-green', concluido:'badge-green', running:'badge-yellow', error:'badge-red', requested:'badge-gray'};
+  const lbl = {done:'Concluído', concluido:'Concluído', running:'Rodando', error:'Erro', requested:'Agendado'};
   return `<span class="badge ${map[s]||'badge-gray'}">${lbl[s]||s}</span>`;
 }
 

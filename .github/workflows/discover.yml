@@ -1,0 +1,38 @@
+name: Descobrir Editoras
+
+on:
+  workflow_dispatch:
+    inputs:
+      sample_pages:
+        description: 'Páginas a amostrar (100 págs = 10k livros)'
+        default: '500'
+        required: true
+      min_books:
+        description: 'Mínimo de livros na amostra para incluir editora'
+        default: '3'
+        required: true
+      discover_log_id:
+        description: 'ID do registro em sync_log (opcional)'
+        default: ''
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Descobrir editoras
+        run: python discover.py
+        env:
+          DIRECTUS_URL:       ${{ secrets.DIRECTUS_URL }}
+          DIRECTUS_TOKEN:     ${{ secrets.DIRECTUS_TOKEN }}
+          META_TOKEN:         ${{ secrets.META_TOKEN }}
+          SAMPLE_PAGES:       ${{ inputs.sample_pages }}
+          MIN_BOOKS:          ${{ inputs.min_books }}
+          DISCOVER_LOG_ID:    ${{ inputs.discover_log_id }}
