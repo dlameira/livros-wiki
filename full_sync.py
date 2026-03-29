@@ -265,8 +265,10 @@ while True:
         print(f'  Total: {total_el:,} livros, ~{total_pages:,} páginas')
         if SYNC_LOG_ID:
             directus('PATCH', f'/items/sync_log/{SYNC_LOG_ID}', {
-                'total_paginas': total_pages,
+                'total_paginas':  total_pages,
                 'total_editoras': total_el,
+                'pagina_atual':   page,
+                'progresso_msg':  f'Iniciando… {total_el:,} livros em {total_pages:,} páginas',
             })
 
     # ── Processar itens da página ─────────────────────────────────────────────
@@ -339,7 +341,18 @@ while True:
     conn.commit()
     page += 1
 
-    # ── Checkpoint a cada N páginas ───────────────────────────────────────────
+    # ── Progresso leve a cada 10 páginas ─────────────────────────────────────
+    if SYNC_LOG_ID and page % 10 == 0:
+        pct = round(page / total_pages * 100) if total_pages else 0
+        directus('PATCH', f'/items/sync_log/{SYNC_LOG_ID}', {
+            'pagina_atual':         page,
+            'editoras_processadas': page,
+            'progresso_msg':        f'Página {page}/{total_pages or "?"} ({pct}%) — {livros_criados:,} criados, {livros_atualizados:,} atualizados',
+            'livros_criados':       livros_criados,
+            'livros_atualizados':   livros_atualizados,
+        })
+
+    # ── Checkpoint completo a cada N páginas (verifica cancelar) ─────────────
     if page % CHECKPOINT_EVERY == 0:
         pct = round(page / total_pages * 100) if total_pages else 0
         msg = (f'Página {page}/{total_pages or "?"} ({pct}%) — '
