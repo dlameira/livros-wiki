@@ -341,6 +341,26 @@
     .pub-empty { cursor: default; color: #444; }
     .pub-empty:hover { background: transparent; }
 
+    /* Tags de grupos selecionados */
+    .grupo-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px 4px 12px;
+      border-radius: 20px;
+      border: 1px solid;
+      font-size: 0.75rem;
+      color: #fff;
+    }
+    .grupo-tag-remove {
+      cursor: pointer;
+      opacity: .7;
+      font-size: 1rem;
+      line-height: 1;
+      transition: opacity 0.15s;
+    }
+    .grupo-tag-remove:hover { opacity: 1; }
+
     /* Tags de editoras selecionadas */
     .pub-tag {
       display: inline-flex;
@@ -407,6 +427,14 @@
   <select class="date-sel" id="to-month" onchange="onDateChange()"></select>
   <select class="date-sel" id="to-year" onchange="onDateChange()"></select>
 </div>
+<div class="filters-row" id="filters-grupo">
+  <div class="pub-search-wrap" id="grupo-search-wrap">
+    <input class="pub-input" id="grupo-input" type="text" placeholder="grupo editorial…"
+      oninput="onGrupoInput(this.value)" onfocus="openGrupoDropdown()" autocomplete="off">
+    <div class="pub-dropdown" id="grupo-dropdown"></div>
+  </div>
+  <div id="grupo-tags"></div>
+</div>
 <div class="filters-row" id="filters-pub">
   <div class="pub-search-wrap" id="pub-search-wrap">
     <input class="pub-input" id="pub-input" type="text" placeholder="editora…"
@@ -438,7 +466,9 @@
 
   let allBooks    = [];
   let allEditoras = [];
+  let allGrupos   = []; // [{nome, cor, editoras:[]}]
   let selectedEditoras = new Set();
+  let selectedGrupos   = new Set(); // nomes dos grupos selecionados
   let dateFrom = null;
   let dateTo   = null;
 
@@ -515,6 +545,79 @@
     renderGrid();
   }
 
+  // ── Grupos editoriais ──────────────────────────────────────────────────────
+
+  async function loadGrupos() {
+    try {
+      const r = await fetch(
+        `${DIRECTUS_URL}/items/selos?fields=nome_display,grupo.nome,grupo.cor&limit=200&filter[ativo][_eq]=true`,
+        { headers: { Authorization: `Bearer ${DIRECTUS_TOKEN}` } }
+      );
+      const j = await r.json();
+      const map = {};
+      for (const s of (j.data || [])) {
+        if (!s.grupo || s.grupo.nome === 'Independente') continue;
+        const nome = s.grupo.nome;
+        if (!map[nome]) map[nome] = { nome, cor: s.grupo.cor || '#888', editoras: [] };
+        map[nome].editoras.push(s.nome_display);
+      }
+      allGrupos = Object.values(map).sort((a,b) => a.nome.localeCompare(b.nome));
+    } catch(e) {}
+  }
+
+  function onGrupoInput(query) { openGrupoDropdown(query); }
+
+  function openGrupoDropdown(query) {
+    const q = query !== undefined ? query : document.getElementById('grupo-input').value;
+    const filtered = allGrupos.filter(g => !q || g.nome.toLowerCase().includes(q.toLowerCase()));
+    const dd = document.getElementById('grupo-dropdown');
+    dd.innerHTML = filtered.length
+      ? filtered.map(g => {
+          const sel = selectedGrupos.has(g.nome);
+          return `<div class="pub-option${sel?' selected':''}" data-grupo="${escHtml(g.nome)}"
+                    style="${sel?`color:${g.cor}`:''}">
+                    ${escHtml(g.nome)}
+                  </div>`;
+        }).join('')
+      : '<div class="pub-option pub-empty">nenhum encontrado</div>';
+    dd.classList.add('open');
+  }
+
+  function closeGrupoDropdown() {
+    document.getElementById('grupo-dropdown').classList.remove('open');
+    document.getElementById('grupo-input').value = '';
+  }
+
+  function toggleGrupo(nome) {
+    if (selectedGrupos.has(nome)) selectedGrupos.delete(nome);
+    else selectedGrupos.add(nome);
+    openGrupoDropdown();
+    renderGrupoTags();
+    renderGrid();
+  }
+
+  function renderGrupoTags() {
+    document.getElementById('grupo-tags').innerHTML = [...selectedGrupos].map(nome => {
+      const g = allGrupos.find(g => g.nome === nome);
+      const cor = g?.cor || '#888';
+      return `<span class="grupo-tag" style="background:${cor};border-color:${cor}"
+                data-grupo="${escHtml(nome)}">${escHtml(nome)
+              }<span class="grupo-tag-remove" data-grupo="${escHtml(nome)}">×</span></span>`;
+    }).join('');
+  }
+
+  document.getElementById('grupo-dropdown').addEventListener('click', e => {
+    const opt = e.target.closest('.pub-option');
+    if (opt && opt.dataset.grupo) toggleGrupo(opt.dataset.grupo);
+  });
+  document.getElementById('grupo-tags').addEventListener('click', e => {
+    const rem = e.target.closest('.grupo-tag-remove');
+    if (rem) toggleGrupo(rem.dataset.grupo);
+  });
+  document.addEventListener('click', e => {
+    if (!document.getElementById('grupo-search-wrap').contains(e.target)) closeGrupoDropdown();
+  });
+
   // ── Editoras ───────────────────────────────────────────────────────────────
 
   function buildPublisherList() {
@@ -574,8 +677,11 @@
       new Date(b.data_publicacao + 'T12:00:00') >= dateFrom);
     if (dateTo)   books = books.filter(b => b.data_publicacao &&
       new Date(b.data_publicacao + 'T12:00:00') <= dateTo);
-    if (selectedEditoras.size > 0)
-      books = books.filter(b => selectedEditoras.has(b.editora));
+    const grupoEditoras = new Set(
+      allGrupos.filter(g => selectedGrupos.has(g.nome)).flatMap(g => g.editoras)
+    );
+    if (selectedEditoras.size > 0 || grupoEditoras.size > 0)
+      books = books.filter(b => selectedEditoras.has(b.editora) || grupoEditoras.has(b.editora));
     return books;
   }
 
@@ -598,6 +704,7 @@
       });
       buildPublisherList();
       renderGrid();
+      loadGrupos();
     } catch(e) {
       setStatus('erro ao carregar');
     }
