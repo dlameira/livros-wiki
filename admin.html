@@ -892,13 +892,18 @@ async function loadSyncHistory() {
   const card = document.getElementById('sync-active-card');
   if (active) {
     card.style.display = 'block';
-    const total = active.total_editoras || 0;
-    const done  = active.editoras_processadas || 0;
-    const pct   = total > 0 ? Math.round(done / total * 100) : 0;
-    document.getElementById('sync-prog-fill').style.width  = pct + '%';
-    document.getElementById('sync-prog-pct').textContent   = pct + '%';
-    document.getElementById('sync-prog-label').textContent = total > 0 ? `${done} de ${total} editoras` : 'Iniciando...';
-    document.getElementById('sync-prog-msg').textContent   = active.progresso_msg || '';
+    const total = active.total_editoras || 0;      // na fase salvar = total livros
+    const done  = active.editoras_processadas || 0; // na fase salvar = livros salvos
+    const encontrados = active.livros_encontrados || 0;
+    const salvando = total > 0;
+    const pct = salvando ? Math.round(done / total * 100) : 0;
+
+    document.getElementById('sync-prog-fill').style.width = (salvando ? pct : 0) + '%';
+    document.getElementById('sync-prog-pct').textContent  = salvando ? pct + '%' : '';
+    document.getElementById('sync-prog-label').textContent = salvando
+      ? `${done.toLocaleString('pt-BR')} de ${total.toLocaleString('pt-BR')} livros`
+      : `${encontrados.toLocaleString('pt-BR')} livros encontrados…`;
+    document.getElementById('sync-prog-msg').textContent = active.progresso_msg || 'Iniciando...';
     if (!_pollTimer) _pollTimer = setInterval(loadSyncHistory, 4000);
   } else {
     card.style.display = 'none';

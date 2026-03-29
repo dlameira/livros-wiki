@@ -156,19 +156,13 @@ else:
 
 publishers = [p for p in PUBLISHERS if not PUBLISHER_FILTER or p['label'] == PUBLISHER_FILTER]
 
-# Registra total de editoras para barra de progresso
-if SYNC_LOG_ID:
-    directus('PATCH', f'/items/sync_log/{SYNC_LOG_ID}', {
-        'total_editoras': len(publishers),
-        'editoras_processadas': 0,
-    })
+_livros_encontrados = 0
 
 for pub_idx, pub in enumerate(publishers):
     print(f'Buscando: {pub["label"]} ({date_label})...')
     if SYNC_LOG_ID:
         directus('PATCH', f'/items/sync_log/{SYNC_LOG_ID}', {
-            'editoras_processadas': pub_idx,
-            'progresso_msg': f'Buscando {pub["label"]}...',
+            'progresso_msg': f'Buscando {pub["label"]}… ({pub_idx+1}/{len(publishers)} editoras, {_livros_encontrados} livros até agora)',
         })
     try:
         base_query = f'VL={pub["search"]}'
@@ -227,11 +221,12 @@ for pub_idx, pub in enumerate(publishers):
                 break
             page += 1
 
+        _livros_encontrados += count
         print(f'  {count} livros encontrados')
         if SYNC_LOG_ID:
             directus('PATCH', f'/items/sync_log/{SYNC_LOG_ID}', {
-                'editoras_processadas': pub_idx + 1,
-                'progresso_msg': f'{pub["label"]}: {count} livros',
+                'livros_encontrados': _livros_encontrados,
+                'progresso_msg': f'{pub["label"]}: {count} livros ({pub_idx+1}/{len(publishers)} editoras)',
             })
 
     except Exception as e:
@@ -251,13 +246,30 @@ to_update = list(seen_upd.values())
 
 # ── 5. Criar novos ────────────────────────────────────────────────────────────
 
+total_livros = len(to_create) + len(to_update)
+livros_salvos = 0
+
+if SYNC_LOG_ID:
+    directus('PATCH', f'/items/sync_log/{SYNC_LOG_ID}', {
+        'total_editoras': total_livros,
+        'editoras_processadas': 0,
+        'progresso_msg': f'Salvando {total_livros} livros…',
+    })
+
 print(f'\nCriando {len(to_create)} novos livros...')
 if to_create:
     BATCH = 100
     for i in range(0, len(to_create), BATCH):
         result = directus('POST', '/items/biblioteca', to_create[i:i+BATCH])
         if result:
-            print(f'  Lote {i//BATCH+1}: {len(result.get("data", []))} criados')
+            n = len(result.get('data', []))
+            livros_salvos += n
+            print(f'  Lote {i//BATCH+1}: {n} criados')
+            if SYNC_LOG_ID:
+                directus('PATCH', f'/items/sync_log/{SYNC_LOG_ID}', {
+                    'editoras_processadas': livros_salvos,
+                    'progresso_msg': f'Criando novos… {livros_salvos}/{total_livros}',
+                })
 
 # ── 6. Atualizar existentes ───────────────────────────────────────────────────
 
@@ -269,7 +281,14 @@ if to_update:
         payload = [{'id': id_, **data} for id_, data in batch]
         result  = directus('PATCH', '/items/biblioteca', payload)
         if result:
-            print(f'  Lote {i//BATCH+1}: {len(result.get("data", []))} atualizados')
+            n = len(result.get('data', []))
+            livros_salvos += n
+            print(f'  Lote {i//BATCH+1}: {n} atualizados')
+            if SYNC_LOG_ID:
+                directus('PATCH', f'/items/sync_log/{SYNC_LOG_ID}', {
+                    'editoras_processadas': livros_salvos,
+                    'progresso_msg': f'Atualizando… {livros_salvos}/{total_livros}',
+                })
 
 now_str = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 print(f'\nConcluído em {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")} UTC')
