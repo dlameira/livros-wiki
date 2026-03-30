@@ -436,6 +436,20 @@
       margin-bottom: 8px;
     }
 
+    /* ── MOBILE ── */
+    @media (max-width: 600px) {
+      header { padding: 20px 16px 0; flex-wrap: wrap; gap: 10px; }
+      .filters-row { padding: 10px 16px 0; }
+      .status { padding: 10px 16px 0; }
+      .grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px 10px;
+        padding: 16px 16px 60px;
+      }
+      .card-author { display: none; }
+      #scroll-sentinel { margin: 0 16px; }
+    }
+
     /* ── PAINEL EDITORAS VISITANTE ── */
     .ep-overlay {
       display: none;
@@ -579,7 +593,7 @@
   </div>
   <div style="display:flex;gap:8px;align-items:center">
     <button class="save-view-btn" id="ep-open-btn" onclick="openEditorasPanel()">minhas editoras</button>
-    <button class="save-view-btn" id="save-view-btn" onclick="toggleSaveView()">salvar vista</button>
+    <button class="save-view-btn" id="save-view-btn" onclick="toggleSaveView()" style="display:none">salvar vista</button>
   </div>
 </header>
 
