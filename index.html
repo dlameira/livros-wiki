@@ -927,6 +927,15 @@
     if (dateTo)   url += `&filter[data_publicacao][_lte]=${dateTo.toISOString().slice(0, 10)}`;
 
     const editoraFilter = getEditoraFilter();
+
+    // Lista vazia = usuário escolheu não ver nenhuma editora
+    if (editoraFilter.size === 0) {
+      document.getElementById('grid').innerHTML = '<div class="empty">nenhum livro — ajuste suas editoras</div>';
+      setStatus('0 livros');
+      isFetching = false;
+      return;
+    }
+
     for (const e of editoraFilter) {
       url += `&filter[editora][_in][]=${encodeURIComponent(e)}`;
     }
