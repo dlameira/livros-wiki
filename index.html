@@ -937,9 +937,6 @@
             + `&fields=id,isbn,titulo,autor,editora,capa_url,data_publicacao`
             + `&limit=${PAGE_LIMIT}&page=${currentPage}&meta=total_count`;
 
-    if (dateFrom) url += `&filter[data_publicacao][_gte]=${dateFrom.toISOString().slice(0, 10)}`;
-    if (dateTo)   url += `&filter[data_publicacao][_lte]=${dateTo.toISOString().slice(0, 10)}`;
-
     const editoraFilter = getEditoraFilter();
 
     // Lista vazia = usuário escolheu não ver nenhuma editora
@@ -950,9 +947,12 @@
       return;
     }
 
-    for (const e of editoraFilter) {
-      url += `&filter[editora][_in][]=${encodeURIComponent(e)}`;
-    }
+    // Filtro JSON garante lógica AND entre data e editora (bracket notation causa OR no Directus)
+    const f = {};
+    if (dateFrom) f.data_publicacao = { _gte: dateFrom.toISOString().slice(0, 10) };
+    if (dateTo)   f.data_publicacao = { ...(f.data_publicacao||{}), _lte: dateTo.toISOString().slice(0, 10) };
+    f.editora = { _in: [...editoraFilter] };
+    url += `&filter=${encodeURIComponent(JSON.stringify(f))}`;
 
     try {
       const r = await fetch(url);
