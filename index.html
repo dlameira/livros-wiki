@@ -403,14 +403,38 @@
       font-size: 0.75rem;
       color: var(--text);
     }
-    .pub-tag-remove {
+    .editoras-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px 4px 12px;
+      border-radius: 20px;
+      border: 1px solid #3a3a3a;
+      background: #1e1e1e;
+      font-size: 0.75rem;
+      color: var(--text);
+    }
+    .editoras-tag-remove {
       cursor: pointer;
       color: var(--muted);
       font-size: 1rem;
       line-height: 1;
       transition: color 0.15s;
     }
-    .pub-tag-remove:hover { color: var(--text); }
+    .editoras-tag-remove:hover { color: var(--text); }
+
+    .editoras-add-btn {
+      background: transparent;
+      border: 1px dashed var(--border);
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-family: inherit;
+      padding: 4px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .editoras-add-btn:hover { border-color: #444; color: #aaa; }
 
     .detail-contributors {
       font-size: 0.78rem;
@@ -593,23 +617,22 @@
     <p style="font-size:0.68rem;color:#333;margin-top:3px">por daniel lameira + metabooks</p>
   </div>
   <div style="display:flex;gap:8px;align-items:center">
-    <button class="save-view-btn" id="ep-open-btn" onclick="openEditorasPanel()">minhas editoras</button>
     <button class="save-view-btn" id="save-view-btn" onclick="toggleSaveView()" style="display:none">salvar vista</button>
   </div>
 </header>
 
-<!-- Painel: Minhas Editoras -->
+<!-- Painel: Editoras -->
 <div class="ep-overlay" id="ep-overlay" onclick="if(event.target===this)closeEditorasPanel()">
   <div class="ep-panel">
     <div class="ep-header">
       <div>
-        <h2>minhas editoras</h2>
-        <p>escolha quais editoras aparecem no seu catálogo</p>
+        <h2>editoras</h2>
+        <p>grupos e editoras para filtrar o catálogo</p>
       </div>
       <button class="ep-close" onclick="closeEditorasPanel()">✕</button>
     </div>
     <div class="ep-search">
-      <input type="text" id="ep-search" placeholder="buscar editora…" oninput="renderEpBody()">
+      <input type="text" id="ep-search" placeholder="buscar editora ou grupo…" oninput="renderEpBody()">
     </div>
     <div class="ep-body" id="ep-body">
       <div style="padding:40px 20px;color:#333;text-align:center;font-size:.85rem">carregando…</div>
@@ -619,7 +642,6 @@
       <button class="ep-btn" onclick="epSetDefault()">padrão</button>
       <button class="ep-btn" onclick="epSetNone()">nenhuma</button>
       <button class="ep-btn" onclick="epSetAll()">todas</button>
-      <button class="ep-btn ep-btn-save" onclick="saveEditorasPanel()">salvar</button>
     </div>
   </div>
 </div>
@@ -637,21 +659,10 @@
   <select class="date-sel" id="to-month" onchange="onDateChange()"></select>
   <select class="date-sel" id="to-year" onchange="onDateChange()"></select>
 </div>
-<div class="filters-row" id="filters-grupo">
-  <div class="pub-search-wrap" id="grupo-search-wrap">
-    <input class="pub-input" id="grupo-input" type="text" placeholder="grupo editorial…"
-      oninput="onGrupoInput(this.value)" onfocus="openGrupoDropdown()" autocomplete="off">
-    <div class="pub-dropdown" id="grupo-dropdown"></div>
-  </div>
-  <div id="grupo-tags"></div>
-</div>
-<div class="filters-row" id="filters-pub">
-  <div class="pub-search-wrap" id="pub-search-wrap">
-    <input class="pub-input" id="pub-input" type="text" placeholder="editora…"
-      oninput="onPubInput(this.value)" onfocus="openPubDropdown()" autocomplete="off">
-    <div class="pub-dropdown" id="pub-dropdown"></div>
-  </div>
-  <div id="pub-tags"></div>
+<div class="filters-row" id="filters-editoras">
+  <span class="filter-label">editoras</span>
+  <div id="editoras-tags"></div>
+  <button class="editoras-add-btn" onclick="openEditorasPanel()">+ adicionar</button>
 </div>
 <div class="filters-row" id="filters-autor">
   <input class="pub-input" id="autor-input" type="text" placeholder="buscar autor…"
@@ -782,7 +793,7 @@
     fetchBooks(true);
   }
 
-  // ── Grupos editoriais ──────────────────────────────────────────────────────
+  // ── Grupos e editoras ─────────────────────────────────────────────────────
 
   async function loadGrupos() {
     try {
@@ -803,106 +814,6 @@
       allGrupos = Object.values(map).sort((a,b) => a.nome.localeCompare(b.nome));
     } catch(e) {}
   }
-
-  function onGrupoInput(query) { openGrupoDropdown(query); }
-
-  function openGrupoDropdown(query) {
-    const q = query !== undefined ? query : document.getElementById('grupo-input').value;
-    const filtered = allGrupos.filter(g => !q || g.nome.toLowerCase().includes(q.toLowerCase()));
-    const dd = document.getElementById('grupo-dropdown');
-    dd.innerHTML = filtered.length
-      ? filtered.map(g => {
-          const sel = selectedGrupos.has(g.nome);
-          return `<div class="pub-option${sel?' selected':''}" data-grupo="${escHtml(g.nome)}"
-                    style="${sel?`color:${g.cor}`:''}">
-                    ${escHtml(g.nome)}
-                  </div>`;
-        }).join('')
-      : '<div class="pub-option pub-empty">nenhum encontrado</div>';
-    dd.classList.add('open');
-  }
-
-  function closeGrupoDropdown() {
-    document.getElementById('grupo-dropdown').classList.remove('open');
-    document.getElementById('grupo-input').value = '';
-  }
-
-  function toggleGrupo(nome) {
-    if (selectedGrupos.has(nome)) selectedGrupos.delete(nome);
-    else selectedGrupos.add(nome);
-    openGrupoDropdown();
-    renderGrupoTags();
-    fetchBooks(true);
-  }
-
-  function renderGrupoTags() {
-    document.getElementById('grupo-tags').innerHTML = [...selectedGrupos].map(nome => {
-      const g = allGrupos.find(g => g.nome === nome);
-      const cor = g?.cor || '#888';
-      return `<span class="grupo-tag" style="background:${cor};border-color:${cor}"
-                data-grupo="${escHtml(nome)}">${escHtml(nome)
-              }<span class="grupo-tag-remove" data-grupo="${escHtml(nome)}">×</span></span>`;
-    }).join('');
-  }
-
-  document.getElementById('grupo-dropdown').addEventListener('click', e => {
-    const opt = e.target.closest('.pub-option');
-    if (opt && opt.dataset.grupo) toggleGrupo(opt.dataset.grupo);
-  });
-  document.getElementById('grupo-tags').addEventListener('click', e => {
-    const rem = e.target.closest('.grupo-tag-remove');
-    if (rem) toggleGrupo(rem.dataset.grupo);
-  });
-  document.addEventListener('click', e => {
-    if (!document.getElementById('grupo-search-wrap').contains(e.target)) closeGrupoDropdown();
-  });
-
-  // ── Editoras ───────────────────────────────────────────────────────────────
-
-  function onPubInput(query) { openPubDropdown(query); }
-
-  function openPubDropdown(query) {
-    const q = query !== undefined ? query : document.getElementById('pub-input').value;
-    const filtered = allEditoras.filter(e => !q || e.toLowerCase().includes(q.toLowerCase()));
-    const dd = document.getElementById('pub-dropdown');
-    dd.innerHTML = filtered.length
-      ? filtered.map(e =>
-          `<div class="pub-option${selectedEditoras.has(e) ? ' selected' : ''}" data-pub="${escHtml(e)}">${escHtml(e)}</div>`
-        ).join('')
-      : '<div class="pub-option pub-empty">nenhuma encontrada</div>';
-    dd.classList.add('open');
-  }
-
-  function closePubDropdown() {
-    document.getElementById('pub-dropdown').classList.remove('open');
-    document.getElementById('pub-input').value = '';
-  }
-
-  function toggleEditora(name) {
-    if (selectedEditoras.has(name)) selectedEditoras.delete(name);
-    else selectedEditoras.add(name);
-    openPubDropdown();
-    renderPublisherTags();
-    fetchBooks(true);
-  }
-
-  function renderPublisherTags() {
-    document.getElementById('pub-tags').innerHTML = [...selectedEditoras].map(e =>
-      `<span class="pub-tag">${escHtml(e)}<span class="pub-tag-remove" data-pub="${escHtml(e)}">×</span></span>`
-    ).join('');
-  }
-
-  document.getElementById('pub-dropdown').addEventListener('click', e => {
-    const opt = e.target.closest('.pub-option');
-    if (opt && opt.dataset.pub) toggleEditora(opt.dataset.pub);
-  });
-  document.getElementById('pub-tags').addEventListener('click', e => {
-    const rem = e.target.closest('.pub-tag-remove');
-    if (rem) toggleEditora(rem.dataset.pub);
-  });
-  document.addEventListener('click', e => {
-    if (!document.getElementById('pub-search-wrap').contains(e.target)) closePubDropdown();
-  });
 
   // ── Busca por autor ────────────────────────────────────────────────────────
 
@@ -940,21 +851,16 @@
   // ── Fetch + Paginação ──────────────────────────────────────────────────────
 
   function getEditoraFilter() {
-    // Filtro explícito dos dropdowns tem prioridade
     if (selectedEditoras.size > 0 || selectedGrupos.size > 0) {
       const editoras = new Set([...selectedEditoras]);
       for (const g of allGrupos) {
-        if (selectedGrupos.has(g.nome)) {
-          for (const e of g.editoras) editoras.add(e);
-        }
+        if (selectedGrupos.has(g.nome)) for (const e of g.editoras) editoras.add(e);
       }
       return editoras;
     }
-    // Lista salva pelo visitante (null = nunca salvou; [] = salvou vazia de propósito)
-    const saved = getSavedEditorasList();
-    if (saved !== null) return new Set(saved);
-    // Padrão: editoras ativas curadas pelo admin
-    return new Set(allEditoras);
+    const saved = loadEditorasState();
+    if (saved === null) return new Set(allEditoras); // primeira visita: tudo curado
+    return new Set(); // visitante zerou explicitamente
   }
 
   async function fetchBooks(reset = true) {
@@ -1113,20 +1019,51 @@
     document.querySelectorAll('#grid img[data-src]').forEach(img => _lazyObserver.observe(img));
   }
 
-  // ── Painel Minhas Editoras ─────────────────────────────────────────────────
+  // ── Painel editoras (unificado) ────────────────────────────────────────────
 
   const EDITORAS_KEY = 'livros_wiki_editoras';
-  let _epSelected    = new Set(); // seleção temporária dentro do painel
-  let _epInactive    = null;      // selos inativos (carregados na 1ª abertura)
+  let _epInactive = null;
 
-  function getSavedEditorasList() {
+  function loadEditorasState() {
     const raw = localStorage.getItem(EDITORAS_KEY);
     if (!raw) return null;
-    try { return JSON.parse(raw); } catch(e) { return null; }
+    try {
+      const p = JSON.parse(raw);
+      if (p && p.v === 2) return p;
+      return null; // formato antigo — ignora
+    } catch(e) { return null; }
   }
 
+  function saveEditorasState() {
+    localStorage.setItem(EDITORAS_KEY, JSON.stringify({
+      v: 2, grupos: [...selectedGrupos], editoras: [...selectedEditoras]
+    }));
+  }
+
+  function renderEditorasTags() {
+    const wrap = document.getElementById('editoras-tags');
+    const grupoTags = [...selectedGrupos].map(nome => {
+      const g = allGrupos.find(x => x.nome === nome);
+      const cor = g?.cor || '#888';
+      return `<span class="editoras-tag" style="border-color:${cor};color:${cor}">${escHtml(nome)}<span class="editoras-tag-remove" data-grupo="${escHtml(nome)}">×</span></span>`;
+    }).join('');
+    const editoraTags = [...selectedEditoras].map(e =>
+      `<span class="editoras-tag">${escHtml(e)}<span class="editoras-tag-remove" data-editora="${escHtml(e)}">×</span></span>`
+    ).join('');
+    wrap.innerHTML = grupoTags + editoraTags;
+  }
+
+  document.getElementById('editoras-tags').addEventListener('click', e => {
+    const rem = e.target.closest('.editoras-tag-remove');
+    if (!rem) return;
+    if (rem.dataset.grupo) selectedGrupos.delete(rem.dataset.grupo);
+    else if (rem.dataset.editora) selectedEditoras.delete(rem.dataset.editora);
+    saveEditorasState();
+    renderEditorasTags();
+    fetchBooks(true);
+  });
+
   async function openEditorasPanel() {
-    // Carrega selos inativos na primeira abertura
     if (_epInactive === null) {
       try {
         const r = await fetch(
@@ -1136,118 +1073,111 @@
         _epInactive = [...new Set((j.data || []).map(s => s.nome_display).filter(Boolean))].sort();
       } catch(e) { _epInactive = []; }
     }
-
-    // Inicializa seleção a partir do salvo ou padrão (ativas)
-    const saved = getSavedEditorasList();
-    _epSelected = new Set(saved || allEditoras);
-
     document.getElementById('ep-search').value = '';
     renderEpBody();
     document.getElementById('ep-overlay').classList.add('open');
-    updateEpOpenBtn();
   }
 
   function closeEditorasPanel() {
     document.getElementById('ep-overlay').classList.remove('open');
+    saveEditorasState();
+    renderEditorasTags();
   }
 
   function renderEpBody() {
     const q = document.getElementById('ep-search').value.toLowerCase();
     const body = document.getElementById('ep-body');
 
-    // Grupos curados (editoras ativas com grupo)
     const groupedHtml = allGrupos.map(g => {
-      const tags = g.editoras
-        .filter(e => !q || e.toLowerCase().includes(q))
-        .map(e => epTagHtml(e))
+      const matchNome = !q || g.nome.toLowerCase().includes(q);
+      const matchEdits = g.editoras.some(e => e.toLowerCase().includes(q));
+      if (q && !matchNome && !matchEdits) return '';
+      const isOn = selectedGrupos.has(g.nome);
+      const editTags = g.editoras
+        .filter(e => !q || matchNome || e.toLowerCase().includes(q))
+        .map(e => epEditoraTagHtml(e))
         .join('');
-      if (!tags) return '';
       return `<div class="ep-group">
-        <div class="ep-group-nome" style="color:${g.cor}">${escHtml(g.nome)}</div>
-        <div class="ep-tags">${tags}</div>
+        <div class="ep-group-nome">
+          <span class="ep-tag${isOn ? ' on' : ''}" style="border-color:${g.cor};color:${isOn ? '#fff' : g.cor};${isOn ? `background:${g.cor}33` : ''}" onclick="epToggleGrupo('${escHtml(g.nome)}')">${escHtml(g.nome)}</span>
+        </div>
+        <div class="ep-tags" style="margin-top:6px">${editTags}</div>
       </div>`;
     }).join('');
 
-    // Editoras ativas sem grupo (independentes)
     const activeInGrupos = new Set(allGrupos.flatMap(g => g.editoras));
     const indeps = allEditoras
       .filter(e => !activeInGrupos.has(e) && (!q || e.toLowerCase().includes(q)))
-      .map(e => epTagHtml(e))
+      .map(e => epEditoraTagHtml(e))
       .join('');
     const indepsHtml = indeps
       ? `<div class="ep-group"><div class="ep-group-nome" style="color:#666">Independentes</div><div class="ep-tags">${indeps}</div></div>`
       : '';
 
-    // Selos inativos (outras editoras)
     const inactiveTags = (_epInactive || [])
       .filter(e => !q || e.toLowerCase().includes(q))
-      .map(e => epTagHtml(e))
+      .map(e => epEditoraTagHtml(e))
       .join('');
     const inactiveHtml = inactiveTags
-      ? `<div class="ep-section-label">outras editoras</div>
-         <div class="ep-group"><div class="ep-tags">${inactiveTags}</div></div>`
+      ? `<div class="ep-section-label">outras editoras</div><div class="ep-group"><div class="ep-tags">${inactiveTags}</div></div>`
       : '';
 
     body.innerHTML = groupedHtml || indepsHtml
       ? `<div class="ep-section-label">curadas</div>${groupedHtml}${indepsHtml}${inactiveHtml}`
       : inactiveHtml || '<div style="padding:40px 20px;color:#333;text-align:center;font-size:.85rem">nenhuma encontrada</div>';
 
-    // Atualiza contagem
-    document.getElementById('ep-count').textContent =
-      `${_epSelected.size} selecionada${_epSelected.size !== 1 ? 's' : ''}`;
+    updateEpCount();
   }
 
-  function epTagHtml(nome) {
-    const on = _epSelected.has(nome) ? ' on' : '';
-    return `<span class="ep-tag${on}" onclick="epToggle('${escHtml(nome)}')">${escHtml(nome)}</span>`;
+  function epEditoraTagHtml(nome) {
+    const on = selectedEditoras.has(nome) ? ' on' : '';
+    return `<span class="ep-tag${on}" data-editora-tag="${escHtml(nome)}" onclick="epToggleEditora('${escHtml(nome)}')">${escHtml(nome)}</span>`;
   }
 
-  function epToggle(nome) {
-    if (_epSelected.has(nome)) _epSelected.delete(nome);
-    else _epSelected.add(nome);
-    // Atualiza só a tag clicada sem re-renderizar tudo
-    document.querySelectorAll('.ep-tag').forEach(el => {
-      if (el.textContent.replace('✓ ', '') === nome) {
-        el.classList.toggle('on', _epSelected.has(nome));
-      }
+  function epToggleGrupo(nome) {
+    if (selectedGrupos.has(nome)) selectedGrupos.delete(nome);
+    else selectedGrupos.add(nome);
+    renderEpBody();
+    fetchBooks(true);
+  }
+
+  function epToggleEditora(nome) {
+    if (selectedEditoras.has(nome)) selectedEditoras.delete(nome);
+    else selectedEditoras.add(nome);
+    document.querySelectorAll('[data-editora-tag]').forEach(el => {
+      if (el.dataset.editoraTag === nome) el.classList.toggle('on', selectedEditoras.has(nome));
     });
-    document.getElementById('ep-count').textContent =
-      `${_epSelected.size} selecionada${_epSelected.size !== 1 ? 's' : ''}`;
+    updateEpCount();
+    fetchBooks(true);
   }
 
   function epSetDefault() {
-    _epSelected = new Set(allEditoras);
+    selectedGrupos   = new Set();
+    selectedEditoras = new Set();
+    localStorage.removeItem(EDITORAS_KEY);
     renderEpBody();
+    fetchBooks(true);
   }
 
   function epSetNone() {
-    _epSelected = new Set();
+    selectedGrupos   = new Set();
+    selectedEditoras = new Set();
+    saveEditorasState();
     renderEpBody();
+    fetchBooks(true);
   }
 
   function epSetAll() {
-    const all = [...allEditoras, ...(_epInactive || [])];
-    _epSelected = new Set(all);
+    selectedGrupos   = new Set(allGrupos.map(g => g.nome));
+    selectedEditoras = new Set([...allEditoras, ...(_epInactive || [])]);
     renderEpBody();
+    fetchBooks(true);
   }
 
-  function saveEditorasPanel() {
-    localStorage.setItem(EDITORAS_KEY, JSON.stringify([..._epSelected]));
-    closeEditorasPanel();
-    updateEpOpenBtn();
-    fetchBooks(true); // recarrega com nova seleção
-  }
-
-  function updateEpOpenBtn() {
-    const btn = document.getElementById('ep-open-btn');
-    const saved = getSavedEditorasList();
-    if (saved) {
-      btn.textContent = `minhas editoras (${saved.length})`;
-      btn.classList.add('saved');
-    } else {
-      btn.textContent = 'minhas editoras';
-      btn.classList.remove('saved');
-    }
+  function updateEpCount() {
+    const t = selectedGrupos.size + selectedEditoras.size;
+    document.getElementById('ep-count').textContent =
+      t ? `${t} selecionada${t !== 1 ? 's' : ''}` : 'nenhuma selecionada (padrão curado)';
   }
 
   // ── Vista salva ────────────────────────────────────────────────────────────
@@ -1351,7 +1281,10 @@
     if (e.target === document.getElementById('detail-overlay')) closeDetail();
   });
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeDetail();
+    if (e.key === 'Escape') {
+      closeDetail();
+      if (document.getElementById('ep-overlay').classList.contains('open')) closeEditorasPanel();
+    }
   });
 
   // ── Utils ──────────────────────────────────────────────────────────────────
@@ -1397,28 +1330,15 @@
     buildDateSelects();
     await loadGrupos();
 
-    const saved = loadSavedView();
+    const saved = loadEditorasState();
     if (saved) {
-      selectedEditoras = new Set(saved.editoras || []);
       selectedGrupos   = new Set(saved.grupos   || []);
-      renderPublisherTags();
-      renderGrupoTags();
+      selectedEditoras = new Set(saved.editoras || []);
     }
-
+    renderEditorasTags();
     updateSaveBtn();
-    updateEpOpenBtn();
 
-    if (saved?.preset) {
-      const btn = document.querySelector(`[data-preset="${saved.preset}"]`);
-      setPreset(saved.preset, btn);
-    } else if (saved?.dateFrom && saved?.dateTo) {
-      dateFrom = new Date(saved.dateFrom);
-      dateTo   = new Date(saved.dateTo);
-      setDateSelects(dateFrom, dateTo);
-      fetchBooks(true);
-    } else {
-      setPreset('lancamentos', document.querySelector('[data-preset="lancamentos"]'));
-    }
+    setPreset('lancamentos', document.querySelector('[data-preset="lancamentos"]'));
   }
 
   init();
