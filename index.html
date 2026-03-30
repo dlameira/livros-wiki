@@ -988,10 +988,6 @@
       return;
     }
 
-    // Filtro JSON garante lógica AND entre todos os campos
-    const f = {};
-    if (dateFrom) f.data_publicacao = { _gte: dateFrom.toISOString().slice(0, 10) };
-    if (dateTo)   f.data_publicacao = { ...(f.data_publicacao||{}), _lte: dateTo.toISOString().slice(0, 10) };
     // Monta filtro como lista de condições para _and
     const conditions = [];
     if (dateFrom || dateTo) {
