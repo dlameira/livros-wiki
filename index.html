@@ -896,9 +896,9 @@
       }
       return editoras;
     }
-    // Lista salva pelo visitante
+    // Lista salva pelo visitante (null = nunca salvou; [] = salvou vazia de propósito)
     const saved = getSavedEditorasList();
-    if (saved && saved.length > 0) return new Set(saved);
+    if (saved !== null) return new Set(saved);
     // Padrão: editoras ativas curadas pelo admin
     return new Set(allEditoras);
   }
