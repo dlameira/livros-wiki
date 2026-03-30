@@ -653,6 +653,12 @@
   </div>
   <div id="pub-tags"></div>
 </div>
+<div class="filters-row" id="filters-autor">
+  <input class="pub-input" id="autor-input" type="text" placeholder="buscar autor…"
+    oninput="onAutorInput(this.value)" autocomplete="off" style="width:180px">
+  <button class="pill" id="autor-editoras-btn" style="display:none"
+    onclick="toggleAutorEditoras()">só minhas editoras ×</button>
+</div>
 
 <div class="status" id="status"></div>
 
@@ -898,6 +904,39 @@
     if (!document.getElementById('pub-search-wrap').contains(e.target)) closePubDropdown();
   });
 
+  // ── Busca por autor ────────────────────────────────────────────────────────
+
+  let authorSearch      = '';
+  let authorAllEditoras = false;
+  let _autorTimer       = null;
+
+  function onAutorInput(val) {
+    clearTimeout(_autorTimer);
+    _autorTimer = setTimeout(() => {
+      authorSearch = val.trim();
+      if (!authorSearch) authorAllEditoras = false;
+      updateAutorBtn();
+      fetchBooks(true);
+    }, 400);
+  }
+
+  function toggleAutorEditoras() {
+    authorAllEditoras = !authorAllEditoras;
+    updateAutorBtn();
+    fetchBooks(true);
+  }
+
+  function updateAutorBtn() {
+    const btn = document.getElementById('autor-editoras-btn');
+    if (authorSearch) {
+      btn.style.display = '';
+      btn.textContent = authorAllEditoras ? 'todas as editoras ×' : 'só minhas editoras ×';
+      btn.classList.toggle('active', authorAllEditoras);
+    } else {
+      btn.style.display = 'none';
+    }
+  }
+
   // ── Fetch + Paginação ──────────────────────────────────────────────────────
 
   function getEditoraFilter() {
@@ -939,20 +978,22 @@
             + `&limit=${PAGE_LIMIT}&page=${currentPage}&meta=total_count`;
 
     const editoraFilter = getEditoraFilter();
+    const ignoraEditoras = authorSearch && authorAllEditoras;
 
-    // Lista vazia = usuário escolheu não ver nenhuma editora
-    if (editoraFilter.size === 0) {
+    // Lista vazia sem busca de autor = usuário escolheu não ver nenhuma editora
+    if (editoraFilter.size === 0 && !ignoraEditoras) {
       document.getElementById('grid').innerHTML = '<div class="empty">nenhum livro — ajuste suas editoras</div>';
       setStatus('0 livros');
       isFetching = false;
       return;
     }
 
-    // Filtro JSON garante lógica AND entre data e editora (bracket notation causa OR no Directus)
+    // Filtro JSON garante lógica AND entre todos os campos
     const f = {};
     if (dateFrom) f.data_publicacao = { _gte: dateFrom.toISOString().slice(0, 10) };
     if (dateTo)   f.data_publicacao = { ...(f.data_publicacao||{}), _lte: dateTo.toISOString().slice(0, 10) };
-    f.editora = { _in: [...editoraFilter] };
+    if (!ignoraEditoras && editoraFilter.size > 0) f.editora = { _in: [...editoraFilter] };
+    if (authorSearch) f.autor = { _icontains: authorSearch };
     url += `&filter=${encodeURIComponent(JSON.stringify(f))}`;
 
     try {
