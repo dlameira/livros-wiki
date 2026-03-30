@@ -992,8 +992,24 @@
     const f = {};
     if (dateFrom) f.data_publicacao = { _gte: dateFrom.toISOString().slice(0, 10) };
     if (dateTo)   f.data_publicacao = { ...(f.data_publicacao||{}), _lte: dateTo.toISOString().slice(0, 10) };
-    if (!ignoraEditoras && editoraFilter.size > 0) f.editora = { _in: [...editoraFilter] };
-    if (authorSearch) f.autor = { _icontains: authorSearch };
+    // Monta filtro como lista de condições para _and
+    const conditions = [];
+    if (dateFrom || dateTo) {
+      const d = {};
+      if (dateFrom) d._gte = dateFrom.toISOString().slice(0, 10);
+      if (dateTo)   d._lte = dateTo.toISOString().slice(0, 10);
+      conditions.push({ data_publicacao: d });
+    }
+    if (!ignoraEditoras && editoraFilter.size > 0) {
+      conditions.push({ editora: { _in: [...editoraFilter] } });
+    }
+    if (authorSearch) {
+      // Divide em palavras: "raphael montes" → contém "raphael" E contém "montes"
+      // Assim pega tanto "Raphael Montes" quanto "Montes, Raphael"
+      authorSearch.trim().split(/\s+/).filter(Boolean)
+        .forEach(w => conditions.push({ autor: { _icontains: w } }));
+    }
+    const f = conditions.length === 1 ? conditions[0] : { _and: conditions };
     url += `&filter=${encodeURIComponent(JSON.stringify(f))}`;
 
     try {
