@@ -142,6 +142,38 @@
     }
     .mosaic-cover img:hover { filter: grayscale(0%); }
 
+    /* ── SORT BAR ─────────────────────────────────────────── */
+    .sort-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 64px 20px;
+      flex-wrap: wrap;
+    }
+
+    .sort-label {
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-right: 4px;
+    }
+
+    .sort-btn {
+      font-size: 0.68rem;
+      font-family: inherit;
+      color: var(--muted);
+      background: none;
+      border: 1px solid #222;
+      border-radius: 3px;
+      padding: 3px 10px;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .sort-btn:hover { color: var(--text); border-color: #444; }
+    .sort-btn.active { color: var(--accent); border-color: var(--accent); }
+
     /* ── SELOS ────────────────────────────────────────────── */
     .selos-section {
       padding: 0 64px 80px;
@@ -720,7 +752,15 @@
 
 <!-- SELOS -->
 <div class="selos-section" id="selos-section" style="display:none">
-  <div class="section-title" style="padding-top:48px;margin-bottom:0;padding-bottom:24px">selos do grupo</div>
+  <div class="section-title" style="padding-top:48px;margin-bottom:0;padding-bottom:20px">selos do grupo</div>
+  <div class="sort-bar">
+    <span class="sort-label">ordenar por</span>
+    <button class="sort-btn active" data-sort="alpha">a → z</button>
+    <button class="sort-btn" data-sort="catalog">catálogo</button>
+    <button class="sort-btn" data-sort="lanc">últimos 6m</button>
+    <button class="sort-btn" data-sort="prev">pré-venda</button>
+    <button class="sort-btn" data-sort="seg">seguidores</button>
+  </div>
   <div class="selos-grid" id="selos-grid"></div>
 </div>
 
@@ -766,6 +806,40 @@
 
   function fmt(n) { return n?.toLocaleString('pt-BR') || '–'; }
   function fq(obj) { return `filter=${encodeURIComponent(JSON.stringify(obj))}`; }
+  function parseSeg(s) {
+    if (!s) return 0;
+    const n = parseFloat(s.replace(',', '.'));
+    if (s.toUpperCase().includes('K')) return n * 1000;
+    if (s.toUpperCase().includes('M')) return n * 1000000;
+    return n;
+  }
+
+  let _currentSort = 'alpha';
+
+  function sortSelos(key) {
+    _currentSort = key;
+    document.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === key));
+    const grid = document.getElementById('selos-grid');
+    const cards = Array.from(grid.querySelectorAll('.selo-card[data-nome]'));
+    const isInativo = c => parseInt(c.dataset.lanc ?? '1') === 0 && parseInt(c.dataset.prev ?? '1') === 0;
+    const ativos   = cards.filter(c => !isInativo(c));
+    const inativos = cards.filter(c =>  isInativo(c));
+
+    const cmp = (a, b) => {
+      if (key === 'alpha')   return a.dataset.nome.localeCompare(b.dataset.nome, 'pt');
+      if (key === 'catalog') return parseInt(b.dataset.catalog) - parseInt(a.dataset.catalog);
+      if (key === 'lanc')    return parseInt(b.dataset.lanc)    - parseInt(a.dataset.lanc);
+      if (key === 'prev')    return parseInt(b.dataset.prev)    - parseInt(a.dataset.prev);
+      if (key === 'seg')     return parseInt(b.dataset.seg)     - parseInt(a.dataset.seg);
+      return 0;
+    };
+
+    [...ativos.sort(cmp), ...inativos.sort(cmp)].forEach(c => grid.appendChild(c));
+  }
+
+  document.querySelectorAll('.sort-btn').forEach(btn => {
+    btn.addEventListener('click', () => sortSelos(btn.dataset.sort));
+  });
 
   // ── Main ───────────────────────────────────────────────────────────────────
   async function main() {
@@ -822,13 +896,12 @@
         await Promise.all(batch.map((s, bi) => loadSelo(s, i + bi, grid)));
       }
 
-      // 8) Reordena: inativos (0 lançamentos 6m E 0 pré-venda) vão para o final, apagados
-      const allCards = Array.from(grid.children);
-      const isInativo = c => parseInt(c.dataset.lanc ?? '1') === 0 && parseInt(c.dataset.prev ?? '1') === 0;
-      const ativos   = allCards.filter(c => !isInativo(c));
-      const inativos = allCards.filter(c =>  isInativo(c));
-      inativos.forEach(c => c.classList.add('inativo'));
-      [...ativos, ...inativos].forEach(c => grid.appendChild(c));
+      // 8) Marca inativos e aplica sort inicial
+      grid.querySelectorAll('.selo-card[data-lanc]').forEach(c => {
+        const inativo = parseInt(c.dataset.lanc ?? '1') === 0 && parseInt(c.dataset.prev ?? '1') === 0;
+        c.classList.toggle('inativo', inativo);
+      });
+      sortSelos(_currentSort);
 
     } catch(e) {
       console.error(e);
@@ -1368,7 +1441,7 @@
 
       const ativoFlag = nLanc > 0 || nPrev > 0;
       grid.children[idx].outerHTML = `
-        <div class="selo-card" data-lanc="${nLanc}" data-prev="${nPrev}">
+        <div class="selo-card" data-nome="${esc(selo.nome_display)}" data-catalog="${nCatalog}" data-lanc="${nLanc}" data-prev="${nPrev}" data-seg="${igStats ? parseSeg(igStats.seg) : 0}">
           ${ativoFlag ? '' : '<span class="tag-inativo">sem lançamentos</span>'}
           ${logoHtml}
           <div class="selo-header">
