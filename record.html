@@ -410,7 +410,7 @@
 
     /* ── HIT TOOLTIP ─────────────────────────────────────── */
     .hit-row {
-      cursor: default;
+      cursor: pointer;
       position: relative;
     }
 
@@ -1466,7 +1466,7 @@
               const titleQ = h.split(' — ')[0].trim();
               return `<div class="hit-row"
                 data-title="${esc(titleQ)}" data-selo="${esc(selo.nome_display)}"
-                onmouseenter="hitEnter(event)" onmouseleave="hitLeave()">· ${esc(h)}</div>`;
+                onmouseenter="hitEnter(event)" onmouseleave="hitLeave()" onclick="hitClick(event)">· ${esc(h)}</div>`;
             }).join('')}
            </div>`
         : '';
@@ -1558,12 +1558,23 @@
     document.getElementById('hit-tooltip').classList.remove('visible');
   }
 
+  async function hitClick(e) {
+    const el    = e.currentTarget;
+    const title = el.dataset.title;
+    const selo  = el.dataset.selo;
+    const key   = selo + '|' + title;
+    // Garante que o cache está populado (pode não ter feito hover antes)
+    if (!(key in _hitCache)) await _showHitTooltip(el, title, selo);
+    const b = _hitCache[key];
+    if (b?.id) openBookModal(b.id, selo);
+  }
+
   async function _showHitTooltip(el, titleQ, seloNome) {
     const key = seloNome + '|' + titleQ;
     if (!(key in _hitCache)) {
       try {
         const r = await fetch(
-          `${API}/items/biblioteca?limit=1&fields=titulo,autor,capa_url,data_publicacao` +
+          `${API}/items/biblioteca?limit=1&fields=id,titulo,autor,capa_url,data_publicacao` +
           `&${fq({ _and: [{ editora: { _eq: seloNome } }, { titulo: { _icontains: titleQ } }] })}`
         );
         _hitCache[key] = ((await r.json()).data || [])[0] || null;
