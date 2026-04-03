@@ -413,43 +413,62 @@
     }
 
     /* ── INSTAGRAM ────────────────────────────────────────── */
-    .selo-instagram {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 0.68rem;
+    .ig-block {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 14px;
+      background: #141414;
+      border: 1px solid #1e1e1e;
+      border-radius: var(--radius);
+      margin-bottom: 14px;
+    }
+
+    .ig-icon {
+      flex-shrink: 0;
+      margin-top: 2px;
       color: var(--muted);
+    }
+
+    .ig-body { flex: 1; min-width: 0; }
+
+    .ig-handle-link {
+      display: inline-block;
+      font-size: 0.82rem;
+      font-weight: bold;
+      color: var(--text);
       text-decoration: none;
-      letter-spacing: 0.04em;
-      margin-top: 12px;
+      letter-spacing: 0.02em;
+      margin-bottom: 5px;
       transition: color 0.15s;
     }
-    .selo-instagram:hover { color: #c9a84c; }
+    .ig-handle-link:hover { color: var(--gold); }
 
     .ig-stats {
-      margin-top: 5px;
       display: flex;
       align-items: center;
+      gap: 6px;
       flex-wrap: wrap;
-      gap: 4px;
     }
 
     .ig-stat {
-      font-size: 0.68rem;
+      font-size: 0.72rem;
       color: var(--muted);
     }
 
-    .ig-stat strong { color: #777; font-weight: normal; }
+    .ig-stat strong {
+      color: #aaa;
+      font-weight: 600;
+    }
 
-    .ig-stat-sep { font-size: 0.68rem; color: var(--muted2); }
+    .ig-stat-sep { font-size: 0.65rem; color: var(--muted2); }
 
     .ig-bio {
-      width: 100%;
-      font-size: 0.68rem;
-      color: #444;
+      margin-top: 6px;
+      font-size: 0.7rem;
+      color: #555;
       font-style: italic;
-      margin-top: 3px;
-      line-height: 1.4;
+      line-height: 1.45;
     }
 
     .mini-cover-placeholder {
@@ -1275,16 +1294,18 @@
 
       const igStats = igHandle ? (SELO_IG_STATS[igHandle] || null) : null;
       const igHtml = igHandle
-        ? `<a class="selo-instagram" href="https://instagram.com/${esc(igHandle)}" target="_blank" rel="noopener">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
-            @${esc(igHandle)}
-           </a>
-           ${igStats ? `<div class="ig-stats">
-             <span class="ig-stat"><strong>${esc(igStats.seg)}</strong> seguidores</span>
-             <span class="ig-stat-sep">·</span>
-             <span class="ig-stat"><strong>${esc(igStats.posts)}</strong> posts</span>
-             ${igStats.bio ? `<div class="ig-bio">"${esc(igStats.bio)}"</div>` : ''}
-           </div>` : ''}`
+        ? `<div class="ig-block">
+            <svg class="ig-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+            <div class="ig-body">
+              <a class="ig-handle-link" href="https://instagram.com/${esc(igHandle)}" target="_blank" rel="noopener">@${esc(igHandle)}</a>
+              ${igStats ? `<div class="ig-stats">
+                <span class="ig-stat"><strong>${esc(igStats.seg)}</strong> seguidores</span>
+                <span class="ig-stat-sep">·</span>
+                <span class="ig-stat"><strong>${esc(igStats.posts)}</strong> posts</span>
+              </div>
+              ${igStats.bio ? `<div class="ig-bio">"${esc(igStats.bio)}"</div>` : ''}` : ''}
+            </div>
+           </div>`
         : '';
 
       const statsHtml = `
@@ -1304,11 +1325,11 @@
             </div>
             ${statsHtml}
           </div>
+          ${igHtml}
           ${descHtml}
           <div class="selo-covers">${coversHtml}</div>
           ${hitsHtml}
           ${recenteHtml}
-          ${igHtml}
         </div>
       `;
     } catch(e) {
