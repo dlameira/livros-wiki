@@ -161,6 +161,7 @@
       position: relative;
     }
     .selo-card:hover { background: var(--surface2); }
+    .selo-card.inativo { filter: grayscale(0.25) sepia(0.08); opacity: 0.82; }
 
     .tag-inativo {
       position: absolute;
@@ -822,6 +823,7 @@
       const isInativo = c => parseInt(c.dataset.lanc ?? '1') === 0 && parseInt(c.dataset.prev ?? '1') === 0;
       const ativos   = allCards.filter(c => !isInativo(c));
       const inativos = allCards.filter(c =>  isInativo(c));
+      inativos.forEach(c => c.classList.add('inativo'));
       [...ativos, ...inativos].forEach(c => grid.appendChild(c));
 
     } catch(e) {
