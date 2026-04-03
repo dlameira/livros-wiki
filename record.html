@@ -158,18 +158,23 @@
       padding: 32px;
       border: 1px solid var(--border);
       transition: background 0.2s;
-    }
-
-    .selo-card.inativo {
-      opacity: 0.38;
-      filter: grayscale(0.4);
-      transition: opacity 0.2s, filter 0.2s;
-    }
-    .selo-card.inativo:hover {
-      opacity: 0.65;
-      filter: grayscale(0.15);
+      position: relative;
     }
     .selo-card:hover { background: var(--surface2); }
+
+    .tag-inativo {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      font-size: 0.58rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      border: 1px solid #2a2a2a;
+      background: #0e0e0e;
+      padding: 2px 7px;
+      border-radius: 3px;
+    }
 
     .selo-header {
       display: flex;
@@ -804,7 +809,6 @@
       const isInativo = c => parseInt(c.dataset.lanc ?? '1') === 0 && parseInt(c.dataset.prev ?? '1') === 0;
       const ativos   = allCards.filter(c => !isInativo(c));
       const inativos = allCards.filter(c =>  isInativo(c));
-      inativos.forEach(c => c.classList.add('inativo'));
       [...ativos, ...inativos].forEach(c => grid.appendChild(c));
 
     } catch(e) {
@@ -1334,8 +1338,10 @@
           <div class="selo-stat accent"><strong>${fmt(nPrev)}</strong> em pré-venda</div>
         </div>`;
 
+      const ativoFlag = nLanc > 0 || nPrev > 0;
       grid.children[idx].outerHTML = `
         <div class="selo-card" data-lanc="${nLanc}" data-prev="${nPrev}">
+          ${ativoFlag ? '' : '<span class="tag-inativo">sem lançamentos</span>'}
           ${logoHtml}
           <div class="selo-header">
             <div>
