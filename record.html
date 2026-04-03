@@ -159,6 +159,16 @@
       border: 1px solid var(--border);
       transition: background 0.2s;
     }
+
+    .selo-card.inativo {
+      opacity: 0.38;
+      filter: grayscale(0.4);
+      transition: opacity 0.2s, filter 0.2s;
+    }
+    .selo-card.inativo:hover {
+      opacity: 0.65;
+      filter: grayscale(0.15);
+    }
     .selo-card:hover { background: var(--surface2); }
 
     .selo-header {
@@ -789,6 +799,13 @@
         await Promise.all(batch.map((s, bi) => loadSelo(s, i + bi, grid)));
       }
 
+      // 8) Reordena: inativos (0 lançamentos 6m) vão para o final, apagados
+      const allCards = Array.from(grid.children);
+      const ativos   = allCards.filter(c => parseInt(c.dataset.lanc ?? '1') > 0);
+      const inativos = allCards.filter(c => parseInt(c.dataset.lanc ?? '1') === 0);
+      inativos.forEach(c => c.classList.add('inativo'));
+      [...ativos, ...inativos].forEach(c => grid.appendChild(c));
+
     } catch(e) {
       console.error(e);
       document.getElementById('stats-row').innerHTML =
@@ -961,7 +978,7 @@
     'Galera':                 'galerarecord',
     'Galera Junior':          null,
     'Galerinha':              null,
-    'Reco-reco':              null,
+    'Reco-reco':              'editorarecoreco',
     'Viva Livros':            null,
     'José Olympio':           null,
     'Civilização Brasileira': 'civilizacaobrasileira',
@@ -983,6 +1000,7 @@
     'editorarosadostempos':{ seg: '54K',  posts: '1.707', bio: 'Livros feministas da ficção à não ficção' },
     'civilizacaobrasileira':{ seg: '36K', posts: '1.462', bio: 'Casa de grandes pensadores' },
     'amarcordeditora':     { seg: '18K',  posts: '167',   bio: 'Narrativas incomuns.' },
+    'editorarecoreco':    { seg: '30K',  posts: '304',   bio: 'O selo voltado para a infância, com autores consagrados da literatura nacional e mundial.' },
   };
 
   // ── Títulos de referência por selo (ranking de vendas 2024–2025) ──────────
@@ -1316,7 +1334,7 @@
         </div>`;
 
       grid.children[idx].outerHTML = `
-        <div class="selo-card">
+        <div class="selo-card" data-lanc="${nLanc}">
           ${logoHtml}
           <div class="selo-header">
             <div>
