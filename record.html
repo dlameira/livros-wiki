@@ -169,9 +169,9 @@
       font-size: 0.58rem;
       letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: var(--muted);
-      border: 1px solid #2a2a2a;
-      background: #0e0e0e;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      background: rgba(192,57,43,0.08);
       padding: 2px 7px;
       border-radius: 3px;
     }
@@ -484,6 +484,19 @@
       color: #555;
       font-style: italic;
       line-height: 1.45;
+    }
+
+    .ig-block-vazio {
+      border-color: #181818;
+      background: #0d0d0d;
+    }
+
+    .ig-block-vazio .ig-icon { opacity: 0.3; }
+
+    .ig-sem-conta {
+      font-size: 0.72rem;
+      color: #3a3a3a;
+      letter-spacing: 0.02em;
     }
 
     .mini-cover-placeholder {
@@ -1316,9 +1329,10 @@
         : '';
 
       const igStats = igHandle ? (SELO_IG_STATS[igHandle] || null) : null;
+      const igSvg = `<svg class="ig-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>`;
       const igHtml = igHandle
         ? `<div class="ig-block">
-            <svg class="ig-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+            ${igSvg}
             <div class="ig-body">
               <a class="ig-handle-link" href="https://instagram.com/${esc(igHandle)}" target="_blank" rel="noopener">@${esc(igHandle)}</a>
               ${igStats ? `<div class="ig-stats">
@@ -1329,7 +1343,15 @@
               ${igStats.bio ? `<div class="ig-bio">"${esc(igStats.bio)}"</div>` : ''}` : ''}
             </div>
            </div>`
-        : '';
+        : `<div class="ig-block ig-block-vazio">
+            ${igSvg}
+            <div class="ig-body">
+              <span class="ig-sem-conta">sem instagram próprio</span>
+              <div class="ig-stats" style="margin-top:4px">
+                <span class="ig-stat">comunicação via <a class="ig-handle-link" href="https://instagram.com/editorarecord" target="_blank" rel="noopener" style="font-size:0.72rem;font-weight:normal">@editorarecord</a></span>
+              </div>
+            </div>
+           </div>`;
 
       const statsHtml = `
         <div class="selo-stats">
