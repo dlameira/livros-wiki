@@ -715,6 +715,76 @@
       letter-spacing: 0.08em;
     }
 
+    /* ── TOGGLE MODO ─────────────────────────────────────── */
+    .theme-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 4px;
+      padding: 5px 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.65rem;
+      font-family: inherit;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .theme-toggle:hover { color: var(--text); border-color: var(--muted); }
+    .theme-toggle svg { flex-shrink: 0; }
+
+    /* ── MODO CLARO ───────────────────────────────────────── */
+    [data-theme="light"] {
+      --bg: #f8f9fa;
+      --surface: #ffffff;
+      --surface2: #eaecf0;
+      --border: #c8ccd1;
+      --text: #202122;
+      --muted: #54595d;
+      --muted2: #72777d;
+      --gold: #a07828;
+    }
+    [data-theme="light"] body { color: var(--text); }
+    [data-theme="light"] .hero h1,
+    [data-theme="light"] .stat-num { color: #202122; }
+    [data-theme="light"] .hero-sub { color: var(--muted); }
+    [data-theme="light"] .selo-nome { color: #202122; }
+    [data-theme="light"] .selo-desc { color: #3a3a3a; }
+    [data-theme="light"] .selo-recent { color: var(--muted); }
+    [data-theme="light"] .selo-hits-label { color: var(--muted2); }
+    [data-theme="light"] .hit-row { color: #3a3a3a; }
+    [data-theme="light"] .hit-row:hover { color: var(--accent); }
+    [data-theme="light"] .sort-btn { border-color: #c8ccd1; color: var(--muted); }
+    [data-theme="light"] .sort-btn:hover { color: var(--text); border-color: var(--muted); }
+    [data-theme="light"] .sort-btn.active { color: var(--accent); border-color: var(--accent); }
+    [data-theme="light"] .ig-block { background: #eaecf0; border-color: #c8ccd1; }
+    [data-theme="light"] .ig-block-vazio { background: #f0f2f4; border-color: #c8ccd1; }
+    [data-theme="light"] .ig-handle-link { color: #202122; }
+    [data-theme="light"] .ig-stat { color: #54595d; }
+    [data-theme="light"] .ig-stat strong { color: #202122; }
+    [data-theme="light"] .ig-bio { color: #72777d; }
+    [data-theme="light"] .ig-sem-conta { color: #72777d; }
+    [data-theme="light"] .ig-icon { color: #72777d; }
+    [data-theme="light"] .selo-logo { filter: brightness(0); opacity: 0.75; }
+    [data-theme="light"] .selo-card.inativo { background: #fff0f0; border-color: rgba(192,57,43,0.18); }
+    [data-theme="light"] .tag-inativo { background: rgba(192,57,43,0.06); }
+    [data-theme="light"] .timeline-bar { opacity: 0.75; }
+    [data-theme="light"] .hit-tooltip { background: #fff; border-color: #c8ccd1; color: #202122; }
+    [data-theme="light"] .hit-tooltip-title { color: #202122; }
+    [data-theme="light"] .hit-tooltip-author,
+    [data-theme="light"] .hit-tooltip-date { color: #54595d; }
+    [data-theme="light"] .book-modal-overlay { background: rgba(0,0,0,0.35); }
+    [data-theme="light"] .book-modal { background: #fff; border-color: #c8ccd1; }
+    [data-theme="light"] .book-modal-title { color: #202122; }
+    [data-theme="light"] .book-modal-meta { color: #54595d; }
+    [data-theme="light"] .book-modal-sinopse { color: #3a3a3a; }
+    [data-theme="light"] .book-modal-close button { color: #54595d; }
+    [data-theme="light"] .book-modal-close button:hover { color: #202122; }
+    [data-theme="light"] .loading { color: var(--muted); }
+    [data-theme="light"] .section-title { color: var(--muted); }
+
     @media (max-width: 640px) {
       .hero, .stats-row, .mosaic-section, .selos-section, .timeline-section, footer {
         padding-left: 24px;
@@ -735,7 +805,13 @@
     <h1>Grupo Record</h1>
     <div class="hero-sub">visão geral do catálogo · selos · lançamentos</div>
   </div>
-  <div class="hero-date" id="hero-date"></div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:12px">
+    <div class="hero-date" id="hero-date"></div>
+    <button class="theme-toggle" id="theme-toggle">
+      <svg id="theme-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+      <span id="theme-label">modo claro</span>
+    </button>
+  </div>
 </div>
 
 <!-- STATS -->
@@ -1565,6 +1641,25 @@
   });
 
   main();
+
+  // ── Modo claro / escuro ────────────────────────────────────────────────────
+  const ICONS = {
+    dark:  '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
+    light: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
+  };
+
+  function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+    document.getElementById('theme-icon').innerHTML = ICONS[theme === 'dark' ? 'dark' : 'light'];
+    document.getElementById('theme-label').textContent = theme === 'dark' ? 'modo claro' : 'modo escuro';
+    localStorage.setItem('record-theme', theme);
+  }
+
+  applyTheme(localStorage.getItem('record-theme') || 'dark');
+
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+  });
 </script>
 </body>
 </html>
