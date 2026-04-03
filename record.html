@@ -799,10 +799,11 @@
         await Promise.all(batch.map((s, bi) => loadSelo(s, i + bi, grid)));
       }
 
-      // 8) Reordena: inativos (0 lançamentos 6m) vão para o final, apagados
+      // 8) Reordena: inativos (0 lançamentos 6m E 0 pré-venda) vão para o final, apagados
       const allCards = Array.from(grid.children);
-      const ativos   = allCards.filter(c => parseInt(c.dataset.lanc ?? '1') > 0);
-      const inativos = allCards.filter(c => parseInt(c.dataset.lanc ?? '1') === 0);
+      const isInativo = c => parseInt(c.dataset.lanc ?? '1') === 0 && parseInt(c.dataset.prev ?? '1') === 0;
+      const ativos   = allCards.filter(c => !isInativo(c));
+      const inativos = allCards.filter(c =>  isInativo(c));
       inativos.forEach(c => c.classList.add('inativo'));
       [...ativos, ...inativos].forEach(c => grid.appendChild(c));
 
@@ -1334,7 +1335,7 @@
         </div>`;
 
       grid.children[idx].outerHTML = `
-        <div class="selo-card" data-lanc="${nLanc}">
+        <div class="selo-card" data-lanc="${nLanc}" data-prev="${nPrev}">
           ${logoHtml}
           <div class="selo-header">
             <div>
