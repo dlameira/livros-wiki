@@ -1,0 +1,1788 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grupo Schwarcz · diagnóstico editorial</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111;
+      --surface2: #161616;
+      --border: #1e1e1e;
+      --text: #e8e0d4;
+      --muted: #555;
+      --muted2: #444;
+      --accent: #d4730a;
+      --accent2: #e8842a;
+      --gold: #c9a84c;
+      --radius: 6px;
+    }
+
+    body {
+      font-family: 'Georgia', serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── HERO ─────────────────────────────────────────────── */
+    .hero {
+      padding: 64px 64px 48px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+
+    .hero-label {
+      font-size: 0.7rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    .hero h1 {
+      font-size: 3rem;
+      font-weight: normal;
+      letter-spacing: 0.04em;
+      color: #f5ede3;
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+
+    .hero-sub {
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .hero-date {
+      font-size: 0.75rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-align: right;
+    }
+
+    /* ── STATS ────────────────────────────────────────────── */
+    .stats-row {
+      display: flex;
+      padding: 36px 64px;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stat-block {
+      flex: 1;
+      padding: 0 32px 0 0;
+      border-right: 1px solid var(--border);
+      margin-right: 32px;
+    }
+    .stat-block:last-child { border-right: none; margin-right: 0; }
+
+    .stat-num {
+      font-size: 2.4rem;
+      font-weight: normal;
+      color: #f0e8dc;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .stat-num span { color: var(--accent); }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* ── MOSAIC ───────────────────────────────────────────── */
+    .mosaic-section {
+      padding: 48px 64px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-title {
+      font-size: 0.7rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+
+    .mosaic {
+      display: flex;
+      gap: 6px;
+      height: 200px;
+      overflow: hidden;
+    }
+
+    .mosaic-cover {
+      height: 100%;
+      flex-shrink: 0;
+      border-radius: 3px;
+      overflow: hidden;
+      background: var(--surface2);
+    }
+
+    .mosaic-cover img {
+      height: 100%;
+      width: auto;
+      display: block;
+      object-fit: cover;
+      filter: grayscale(15%);
+      transition: filter 0.3s;
+    }
+    .mosaic-cover img:hover { filter: grayscale(0%); }
+
+    /* ── SORT BAR ─────────────────────────────────────────── */
+    .sort-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 64px 20px;
+      flex-wrap: wrap;
+    }
+
+    .sort-label {
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-right: 4px;
+    }
+
+    .sort-btn {
+      font-size: 0.68rem;
+      font-family: inherit;
+      color: var(--muted);
+      background: none;
+      border: 1px solid #222;
+      border-radius: 3px;
+      padding: 3px 10px;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .sort-btn:hover { color: var(--text); border-color: #444; }
+    .sort-btn.active { color: var(--accent); border-color: var(--accent); }
+
+    /* ── SELOS ────────────────────────────────────────────── */
+    .selos-section {
+      padding: 0 64px 80px;
+    }
+
+    .selos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      gap: 2px;
+    }
+
+    .selo-card {
+      background: var(--surface);
+      padding: 32px;
+      border: 1px solid var(--border);
+      transition: background 0.2s;
+      position: relative;
+    }
+    .selo-card:hover { background: var(--surface2); }
+    .selo-card.inativo {
+      background: #100d09;
+      border-color: rgba(212, 115, 10, 0.22);
+      opacity: 0.85;
+    }
+
+    .tag-inativo {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      font-size: 0.58rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      background: rgba(212,115,10,0.08);
+      padding: 2px 7px;
+      border-radius: 3px;
+    }
+
+    .selo-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      gap: 12px;
+    }
+
+    .selo-nome {
+      font-size: 1.1rem;
+      letter-spacing: 0.03em;
+      color: #f0e8dc;
+    }
+
+    .selo-stats {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 3px;
+      flex-shrink: 0;
+    }
+
+    .selo-stat {
+      font-size: 0.7rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .selo-stat strong {
+      color: #aaa;
+      font-weight: normal;
+    }
+
+    .selo-stat.accent strong { color: var(--accent); }
+
+    .selo-covers {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .mini-cover {
+      width: 56px;
+      height: 80px;
+      background: var(--surface2);
+      border-radius: 3px;
+      overflow: hidden;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: transform 0.18s, box-shadow 0.18s;
+    }
+
+    .mini-cover:hover {
+      transform: translateY(-4px) scale(1.04);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      z-index: 1;
+      position: relative;
+    }
+
+    .mini-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .mini-cover img.loaded { opacity: 1; }
+
+    /* ── MODAL DETALHE ────────────────────────────────────── */
+    .book-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+    }
+    .book-overlay.open { display: flex; }
+
+    .book-modal {
+      background: #141414;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      max-width: 540px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .book-modal-inner {
+      display: flex;
+      gap: 28px;
+      padding: 32px;
+    }
+
+    .book-modal-cover {
+      width: 110px;
+      flex-shrink: 0;
+    }
+    .book-modal-cover img {
+      width: 100%;
+      border-radius: 3px;
+      display: block;
+    }
+    .book-modal-cover-placeholder {
+      width: 110px;
+      height: 160px;
+      background: #1e1e1e;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #444;
+      font-size: 1.5rem;
+    }
+
+    .book-modal-info { flex: 1; min-width: 0; }
+
+    .book-modal-selo {
+      font-size: 0.65rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    .book-modal-title {
+      font-size: 1.15rem;
+      color: #f0e8dc;
+      line-height: 1.3;
+      margin-bottom: 6px;
+    }
+
+    .book-modal-author {
+      font-size: 0.82rem;
+      color: #888;
+      margin-bottom: 14px;
+    }
+
+    .book-modal-meta {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .book-modal-tag {
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      color: #555;
+      border: 1px solid #2a2a2a;
+      padding: 3px 8px;
+      border-radius: 20px;
+    }
+
+    .book-modal-sinopse {
+      font-size: 0.8rem;
+      color: #777;
+      line-height: 1.7;
+      font-style: italic;
+    }
+
+    .book-modal-loading {
+      font-size: 0.8rem;
+      color: #555;
+      font-style: italic;
+    }
+
+    .book-modal-close {
+      position: sticky;
+      top: 0;
+      display: flex;
+      justify-content: flex-end;
+      padding: 12px 16px 0;
+      background: #141414;
+    }
+
+    .book-modal-close button {
+      background: none;
+      border: none;
+      color: #555;
+      font-size: 1.2rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px 8px;
+    }
+    .book-modal-close button:hover { color: #aaa; }
+
+    /* ── HIT TOOLTIP ─────────────────────────────────────── */
+    .hit-row {
+      cursor: pointer;
+      position: relative;
+    }
+
+    .hit-tooltip {
+      position: fixed;
+      z-index: 900;
+      background: #181818;
+      border: 1px solid #2a2a2a;
+      border-radius: 5px;
+      padding: 12px;
+      display: none;
+      gap: 12px;
+      align-items: flex-start;
+      max-width: 240px;
+      pointer-events: none;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.7);
+    }
+    .hit-tooltip.visible { display: flex; }
+
+    .hit-tooltip-cover {
+      width: 54px;
+      height: 78px;
+      flex-shrink: 0;
+      background: #222;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .hit-tooltip-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .hit-tooltip-info { flex: 1; min-width: 0; }
+
+    .hit-tooltip-title {
+      font-size: 0.75rem;
+      color: #e0d8ce;
+      line-height: 1.3;
+      margin-bottom: 4px;
+    }
+    .hit-tooltip-author {
+      font-size: 0.68rem;
+      color: #666;
+      margin-bottom: 6px;
+    }
+    .hit-tooltip-date {
+      font-size: 0.65rem;
+      color: #444;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── INSTAGRAM ────────────────────────────────────────── */
+    .ig-block {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 14px;
+      background: #141414;
+      border: 1px solid #1e1e1e;
+      border-radius: var(--radius);
+      margin-bottom: 14px;
+      min-height: 82px;
+    }
+
+    .ig-icon {
+      flex-shrink: 0;
+      margin-top: 2px;
+      color: var(--muted);
+    }
+
+    .ig-body { flex: 1; min-width: 0; }
+
+    .ig-handle-link {
+      display: inline-block;
+      font-size: 0.82rem;
+      font-weight: bold;
+      color: var(--text);
+      text-decoration: none;
+      letter-spacing: 0.02em;
+      margin-bottom: 5px;
+      transition: color 0.15s;
+    }
+    .ig-handle-link:hover { color: var(--gold); }
+
+    .ig-stats {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .ig-stat {
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    .ig-stat strong {
+      color: #aaa;
+      font-weight: 600;
+    }
+
+    .ig-stat-sep { font-size: 0.65rem; color: var(--muted2); }
+
+    .ig-bio {
+      margin-top: 6px;
+      font-size: 0.7rem;
+      color: #555;
+      font-style: italic;
+      line-height: 1.45;
+    }
+
+    .ig-block-vazio {
+      border-color: #181818;
+      background: #0d0d0d;
+    }
+
+    .ig-block-vazio .ig-icon { opacity: 0.3; }
+
+    .ig-sem-conta {
+      font-size: 0.72rem;
+      color: #3a3a3a;
+      letter-spacing: 0.02em;
+    }
+
+    .mini-cover-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted2);
+      font-size: 1rem;
+    }
+
+    .selo-logo {
+      max-height: 28px;
+      max-width: 110px;
+      width: auto;
+      height: auto;
+      display: block;
+      margin-bottom: 10px;
+      opacity: 0.85;
+      filter: brightness(0) invert(1);
+    }
+
+    .selo-tag {
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-top: 4px;
+    }
+
+    .selo-desc {
+      font-size: 0.8rem;
+      color: #888;
+      line-height: 1.6;
+      margin-bottom: 20px;
+      font-style: italic;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      min-height: calc(1.6em * 4);
+    }
+
+    .selo-hits {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .selo-hits-label {
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted2);
+      margin-bottom: 8px;
+    }
+
+    .hit-row {
+      font-size: 0.76rem;
+      color: #777;
+      line-height: 1.8;
+    }
+
+    .selo-recent {
+      margin-top: 16px;
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .selo-recent strong {
+      color: #888;
+      font-style: normal;
+      font-weight: normal;
+    }
+
+    /* ── TIMELINE ─────────────────────────────────────────── */
+    .timeline-section {
+      padding: 48px 64px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .timeline-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      height: 100px;
+      margin-top: 24px;
+    }
+
+    .timeline-col {
+      flex: 1;
+      height: 100%;
+      display: flex;
+      align-items: flex-end;
+    }
+
+    .timeline-bar {
+      width: 100%;
+      background: var(--accent);
+      border-radius: 2px 2px 0 0;
+      min-height: 2px;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+    .timeline-bar:hover { opacity: 1; }
+
+    .timeline-labels {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .timeline-year {
+      flex: 1;
+      text-align: center;
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+    }
+
+    /* ── LOADING ──────────────────────────────────────────── */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 64px;
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-style: italic;
+      gap: 12px;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 1px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error {
+      padding: 48px 64px;
+      color: #d4730a;
+      font-size: 0.85rem;
+    }
+
+    /* ── FOOTER ───────────────────────────────────────────── */
+    footer {
+      padding: 32px 64px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .footer-source {
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    .footer-source a {
+      color: var(--gold);
+      text-decoration: none;
+    }
+    .footer-source a:hover { text-decoration: underline; }
+
+    .footer-brand {
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+    }
+
+    /* ── TOGGLE MODO ─────────────────────────────────────── */
+    .theme-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 4px;
+      padding: 5px 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.65rem;
+      font-family: inherit;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .theme-toggle:hover { color: var(--text); border-color: var(--muted); }
+    .theme-toggle svg { flex-shrink: 0; }
+
+    /* ── MODO CLARO ───────────────────────────────────────── */
+    [data-theme="light"] {
+      --bg: #f8f9fa;
+      --surface: #ffffff;
+      --surface2: #eaecf0;
+      --border: #c8ccd1;
+      --text: #202122;
+      --muted: #54595d;
+      --muted2: #72777d;
+      --gold: #a07828;
+    }
+    [data-theme="light"] body { color: var(--text); }
+    [data-theme="light"] .hero h1,
+    [data-theme="light"] .stat-num { color: #202122; }
+    [data-theme="light"] .hero-sub { color: var(--muted); }
+    [data-theme="light"] .selo-nome { color: #202122; }
+    [data-theme="light"] .selo-desc { color: #3a3a3a; }
+    [data-theme="light"] .selo-recent { color: var(--muted); }
+    [data-theme="light"] .selo-hits-label { color: var(--muted2); }
+    [data-theme="light"] .hit-row { color: #3a3a3a; }
+    [data-theme="light"] .hit-row:hover { color: var(--accent); }
+    [data-theme="light"] .sort-btn { border-color: #c8ccd1; color: var(--muted); }
+    [data-theme="light"] .sort-btn:hover { color: var(--text); border-color: var(--muted); }
+    [data-theme="light"] .sort-btn.active { color: var(--accent); border-color: var(--accent); }
+    [data-theme="light"] .ig-block { background: #eaecf0; border-color: #c8ccd1; }
+    [data-theme="light"] .ig-block-vazio { background: #f0f2f4; border-color: #c8ccd1; }
+    [data-theme="light"] .ig-handle-link { color: #202122; }
+    [data-theme="light"] .ig-stat { color: #54595d; }
+    [data-theme="light"] .ig-stat strong { color: #202122; }
+    [data-theme="light"] .ig-bio { color: #72777d; }
+    [data-theme="light"] .ig-sem-conta { color: #72777d; }
+    [data-theme="light"] .ig-icon { color: #72777d; }
+    [data-theme="light"] .selo-logo { filter: brightness(0); opacity: 0.75; }
+    [data-theme="light"] .selo-card.inativo { background: #fff7f0; border-color: rgba(212,115,10,0.18); }
+    [data-theme="light"] .tag-inativo { background: rgba(212,115,10,0.06); }
+    [data-theme="light"] .timeline-bar { opacity: 0.75; }
+    [data-theme="light"] .hit-tooltip { background: #fff; border-color: #c8ccd1; color: #202122; }
+    [data-theme="light"] .hit-tooltip-title { color: #202122; }
+    [data-theme="light"] .hit-tooltip-author,
+    [data-theme="light"] .hit-tooltip-date { color: #54595d; }
+    [data-theme="light"] .book-modal-overlay { background: rgba(0,0,0,0.35); }
+    [data-theme="light"] .book-modal { background: #fff; border-color: #c8ccd1; }
+    [data-theme="light"] .book-modal-title { color: #202122; }
+    [data-theme="light"] .book-modal-meta { color: #54595d; }
+    [data-theme="light"] .book-modal-sinopse { color: #3a3a3a; }
+    [data-theme="light"] .book-modal-close button { color: #54595d; }
+    [data-theme="light"] .book-modal-close button:hover { color: #202122; }
+    [data-theme="light"] .loading { color: var(--muted); }
+    [data-theme="light"] .section-title { color: var(--muted); }
+
+    @media (max-width: 640px) {
+      .hero, .stats-row, .mosaic-section, .selos-section, .timeline-section, footer {
+        padding-left: 24px;
+        padding-right: 24px;
+      }
+      .hero h1 { font-size: 2rem; }
+      .stat-num { font-size: 1.8rem; }
+      .selos-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div>
+    <div class="hero-label">diagnóstico editorial</div>
+    <h1>Grupo Schwarcz</h1>
+    <div class="hero-sub">visão geral do catálogo · selos · lançamentos</div>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:12px">
+    <div class="hero-date" id="hero-date"></div>
+    <button class="theme-toggle" id="theme-toggle">
+      <svg id="theme-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+      <span id="theme-label">modo claro</span>
+    </button>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats-row" id="stats-row">
+  <div class="loading" style="padding:28px 0">
+    <div class="spinner"></div> carregando dados…
+  </div>
+</div>
+
+<!-- TIMELINE -->
+<div class="timeline-section" id="timeline-section" style="display:none">
+  <div class="section-title">publicações por ano</div>
+  <div class="timeline-bars" id="timeline-bars"></div>
+</div>
+
+<!-- SELOS -->
+<div class="selos-section" id="selos-section" style="display:none">
+  <div class="section-title" style="padding-top:48px;margin-bottom:0;padding-bottom:20px">selos do grupo</div>
+  <div class="sort-bar">
+    <span class="sort-label">ordenar por</span>
+    <button class="sort-btn active" data-sort="alpha">a → z</button>
+    <button class="sort-btn" data-sort="catalog">catálogo</button>
+    <button class="sort-btn" data-sort="lanc">últimos 6m</button>
+    <button class="sort-btn" data-sort="prev">pré-venda</button>
+    <button class="sort-btn" data-sort="seg">seguidores</button>
+  </div>
+  <div class="selos-grid" id="selos-grid"></div>
+</div>
+
+<!-- TOOLTIP HITS -->
+<div class="hit-tooltip" id="hit-tooltip">
+  <div class="hit-tooltip-cover"><img id="hit-tooltip-img" src="" alt=""></div>
+  <div class="hit-tooltip-info">
+    <div class="hit-tooltip-title" id="hit-tooltip-title"></div>
+    <div class="hit-tooltip-author" id="hit-tooltip-author"></div>
+    <div class="hit-tooltip-date" id="hit-tooltip-date"></div>
+  </div>
+</div>
+
+<!-- MODAL DETALHE -->
+<div class="book-overlay" id="book-overlay">
+  <div class="book-modal" id="book-modal">
+    <div class="book-modal-close"><button onclick="closeBookModal()">✕</button></div>
+    <div class="book-modal-inner" id="book-modal-inner">
+      <div class="book-modal-loading">carregando…</div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-source">
+    dados via <a href="https://livros.wiki" target="_blank">livros.wiki</a> · fonte Metabooks
+  </div>
+  <div class="footer-brand">livros.wiki · diagnóstico gerado automaticamente</div>
+</footer>
+
+<script>
+  const API = 'https://directus-production-afdd.up.railway.app';
+
+  // ── Data do relatório ──────────────────────────────────────────────────────
+  const now = new Date();
+  document.getElementById('hero-date').textContent =
+    now.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  // ── Utils ──────────────────────────────────────────────────────────────────
+  function esc(s = '') {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function fmt(n) { return n?.toLocaleString('pt-BR') || '–'; }
+  function fq(obj) { return `filter=${encodeURIComponent(JSON.stringify(obj))}`; }
+  function parseSeg(s) {
+    if (!s) return 0;
+    const n = parseFloat(s.replace(',', '.'));
+    if (s.toUpperCase().includes('K')) return n * 1000;
+    if (s.toUpperCase().includes('M')) return n * 1000000;
+    return n;
+  }
+
+  let _currentSort = 'alpha';
+
+  function sortSelos(key) {
+    _currentSort = key;
+    document.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === key));
+    const grid = document.getElementById('selos-grid');
+    const cards = Array.from(grid.querySelectorAll('.selo-card[data-nome]'));
+    const isInativo = c => parseInt(c.dataset.lanc ?? '1') === 0 && parseInt(c.dataset.prev ?? '1') === 0;
+    const ativos   = cards.filter(c => !isInativo(c));
+    const inativos = cards.filter(c =>  isInativo(c));
+
+    const cmp = (a, b) => {
+      if (key === 'alpha')   return a.dataset.nome.localeCompare(b.dataset.nome, 'pt');
+      if (key === 'catalog') return parseInt(b.dataset.catalog) - parseInt(a.dataset.catalog);
+      if (key === 'lanc')    return parseInt(b.dataset.lanc)    - parseInt(a.dataset.lanc);
+      if (key === 'prev')    return parseInt(b.dataset.prev)    - parseInt(a.dataset.prev);
+      if (key === 'seg')     return parseInt(b.dataset.seg)     - parseInt(a.dataset.seg);
+      return 0;
+    };
+
+    [...ativos.sort(cmp), ...inativos.sort(cmp)].forEach(c => grid.appendChild(c));
+  }
+
+  document.querySelectorAll('.sort-btn').forEach(btn => {
+    btn.addEventListener('click', () => sortSelos(btn.dataset.sort));
+  });
+
+  // ── Main ───────────────────────────────────────────────────────────────────
+  async function main() {
+    try {
+      // 1) Busca selos do Grupo Schwarcz
+      const selosRes = await fetch(
+        `${API}/items/selos?limit=200&fields=nome_display,total_livros_mb,grupo.nome` +
+        `&${fq({ grupo: { nome: { _eq: 'Grupo Schwarcz' } } })}&sort=nome_display`
+      );
+      const selosJson = await selosRes.json();
+      const selos = (selosJson.data || []).filter(s => s.nome_display);
+
+      if (!selos.length) {
+        document.getElementById('stats-row').innerHTML =
+          '<div class="error">Nenhum selo encontrado para "Grupo Schwarcz". Verifique o nome do grupo no Directus.</div>';
+        return;
+      }
+
+      const nomesSelos = selos.map(s => s.nome_display);
+      const totalSelos = selos.length;
+
+      // 2) Contagem total de livros
+      const countRes = await fetch(
+        `${API}/items/biblioteca?limit=0&meta=filter_count` +
+        `&${fq({ editora: { _in: nomesSelos } })}`
+      );
+      const countJson  = await countRes.json();
+      const totalLivros = countJson.meta?.filter_count || 0;
+
+      // 3) Livros recentes (últimos 6 meses) para estatística
+      const seisAtras = new Date(); seisAtras.setMonth(seisAtras.getMonth() - 6);
+      const recentRes = await fetch(
+        `${API}/items/biblioteca?limit=0&meta=filter_count` +
+        `&${fq({ _and: [{ editora: { _in: nomesSelos } }, { data_publicacao: { _gte: seisAtras.toISOString().slice(0,10) } }] })}`
+      );
+      const recentJson = await recentRes.json();
+      const totalRecent = recentJson.meta?.filter_count || 0;
+      const porMes = Math.round(totalRecent / 6);
+
+      // 4) Renderiza stats
+      renderStats(totalSelos, totalLivros, porMes);
+
+      // 6) Timeline por ano
+      await renderTimeline(nomesSelos);
+
+      // 7) Renderiza cada selo com capas
+      document.getElementById('selos-section').style.display = '';
+      const grid = document.getElementById('selos-grid');
+      grid.innerHTML = selos.map(() => '<div class="selo-card"><div class="loading" style="padding:20px 0"><div class="spinner"></div></div></div>').join('');
+
+      // Carrega os selos em paralelo, em lotes de 4
+      for (let i = 0; i < selos.length; i += 4) {
+        const batch = selos.slice(i, i + 4);
+        await Promise.all(batch.map((s, bi) => loadSelo(s, i + bi, grid)));
+      }
+
+      // 8) Marca inativos e aplica sort inicial
+      grid.querySelectorAll('.selo-card[data-lanc]').forEach(c => {
+        const inativo = parseInt(c.dataset.lanc ?? '1') === 0 && parseInt(c.dataset.prev ?? '1') === 0;
+        c.classList.toggle('inativo', inativo);
+      });
+      sortSelos(_currentSort);
+
+    } catch(e) {
+      console.error(e);
+      document.getElementById('stats-row').innerHTML =
+        `<div class="error">Erro ao carregar dados: ${esc(e.message)}</div>`;
+    }
+  }
+
+  function renderStats(nSelos, nLivros, porMes) {
+    document.getElementById('stats-row').innerHTML = `
+      <div class="stat-block">
+        <div class="stat-num">${fmt(nSelos)}</div>
+        <div class="stat-label">selos ativos</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-num">${fmt(nLivros)}</div>
+        <div class="stat-label">títulos no catálogo</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-num">${fmt(porMes)}<span>/mês</span></div>
+        <div class="stat-label">lançamentos (média 6m)</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-num">${fmt(Math.round(nLivros / Math.max(nSelos, 1)))}</div>
+        <div class="stat-label">títulos por selo (média)</div>
+      </div>
+    `;
+  }
+
+  async function renderTimeline(nomesSelos) {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let y = 2015; y <= currentYear; y++) years.push(y);
+
+    // Busca contagens por ano usando filtros de data
+    const counts = {};
+    await Promise.all(years.map(async y => {
+      try {
+        const r = await fetch(
+          `${API}/items/biblioteca?limit=0&meta=filter_count` +
+          `&${fq({ _and: [{ editora: { _in: nomesSelos } }, { data_publicacao: { _gte: `${y}-01-01`, _lte: `${y}-12-31` } }] })}`
+        );
+        const j = await r.json();
+        counts[y] = j.meta?.filter_count || 0;
+      } catch { counts[y] = 0; }
+    }));
+
+    const maxCount = Math.max(...Object.values(counts), 1);
+    const section  = document.getElementById('timeline-section');
+    const bars     = document.getElementById('timeline-bars');
+    section.style.display = '';
+
+    bars.innerHTML = years.map(y => {
+      const c   = counts[y] || 0;
+      const pct = Math.max((c / maxCount) * 100, c > 0 ? 3 : 0);
+      return `<div class="timeline-col" title="${fmt(c)} livros em ${y}"><div class="timeline-bar" style="height:${pct}%"></div></div>`;
+    }).join('');
+
+    // Labels separados abaixo das barras
+    const labelsEl = document.createElement('div');
+    labelsEl.className = 'timeline-labels';
+    labelsEl.innerHTML = years.map(y => `<div class="timeline-year">${y}</div>`).join('');
+    bars.insertAdjacentElement('afterend', labelsEl);
+  }
+
+  // ── Informações editoriais por selo ───────────────────────────────────────
+  const SELO_INFO = {
+    'Companhia das Letras': {
+      tag: 'literatura · ficção · não-ficção de qualidade',
+      desc: 'O principal selo do grupo, fundado em 1986 por Luiz Schwarcz. Catálogo de prestígio com Nobel, Booker e os maiores nomes da literatura brasileira contemporânea. Motor cultural do grupo e referência absoluta do mercado literário nacional.',
+    },
+    'Zahar': {
+      tag: 'ciências humanas · psicanálise · filosofia',
+      desc: 'Referência em ciências humanas, psicanálise e filosofia no Brasil desde 1957. Publica Freud, Lacan, Foucault, Bourdieu e as grandes obras do pensamento ocidental. Catálogo indispensável para a universidade e para o leitor intelectualmente exigente.',
+    },
+    'Objetiva': {
+      tag: 'não-ficção popular · negócios · ciência',
+      desc: 'Não-ficção de grande alcance: negócios, ciência, história e comportamento para o leitor curioso. Malcolm Gladwell, Michael Lewis e Eric Hobsbawm estão entre os nomes que definiram o catálogo. Ponte entre o rigor intelectual e o grande público.',
+    },
+    'Alfaguara': {
+      tag: 'literatura latino-americana · ficção em espanhol',
+      desc: 'Braço da Alfaguara espanhola no Brasil, com o melhor da ficção latino-americana e ibérica. Gabriel García Márquez, Mario Vargas Llosa e Isabel Allende integram o catálogo histórico. Literatura de língua espanhola em tradução cuidadosa para o português.',
+    },
+    'Seguinte': {
+      tag: 'young adult · fantasia · romance adolescente',
+      desc: 'Selo de YA do grupo, voltado ao público adolescente e jovem adulto. Fantasia, romance e narrativas de identidade em séries e títulos de forte apelo digital. Pipeline natural para os selos adultos do grupo.',
+    },
+    'Companhia das Letrinhas': {
+      tag: 'infantil · literatura · ilustração',
+      desc: 'Literatura infantil de qualidade, com foco em texto e ilustração de excelência. Títulos brasileiros e internacionais para crianças em formação como leitores. A versão infantil da curadoria rigorosa da Companhia.',
+    },
+    'Companhia de Bolso': {
+      tag: 'pocket · backlist · clássicos acessíveis',
+      desc: 'Formato de bolso para os grandes títulos do catálogo da Companhia. Amplifica o alcance de obras consolidadas com preço reduzido. Democratiza o acesso ao melhor da literatura de prestígio.',
+    },
+    'Penguin-Companhia': {
+      tag: 'clássicos · Penguin · literatura universal',
+      desc: 'Parceria com a Penguin para trazer os clássicos universais ao leitor brasileiro. Edições cuidadosas dos maiores títulos da literatura mundial. O prestígio da Penguin com a curadoria da Companhia.',
+    },
+    'Portfolio-Penguin': {
+      tag: 'negócios · liderança · economia',
+      desc: 'Braço de negócios da parceria Penguin no Brasil. Títulos de gestão, economia e liderança para o leitor corporativo. Complementa a Objetiva em um segmento de alta demanda.',
+    },
+    'Paralela': {
+      tag: 'bem-estar · saúde · comportamento',
+      desc: 'Livros de saúde, bem-estar e comportamento com embasamento científico. Neurociência, psicologia positiva e hábitos saudáveis para o leitor em busca de mudança. Segmento em forte crescimento no mercado editorial brasileiro.',
+    },
+    'Editora JBC': {
+      tag: 'mangá · cultura japonesa · HQ',
+      desc: 'Maior editora de mangá do Brasil, com catálogo amplo de títulos japoneses. Dragon Ball, Naruto e os grandes clássicos do mangá passaram por aqui. Referência absoluta para o público de cultura pop asiática.',
+    },
+    'Quadrinhos na Cia': {
+      tag: 'quadrinhos · graphic novel · arte sequencial',
+      desc: 'Selo dedicado às histórias em quadrinhos e graphic novels de autor. Narrativas visuais de alto nível literário e artístico. A arte sequencial tratada com o mesmo rigor curatorial da Companhia.',
+    },
+    'Escarlate': {
+      tag: 'dark romance · new adult · ficção sensual',
+      desc: 'Selo de dark romance e new adult para o leitor adulto jovem. Narrativas intensas de relacionamentos, poder e desejo com forte apelo emocional. Um dos segmentos de maior crescimento no mercado digital.',
+    },
+    'Bloom Brasil': {
+      tag: 'romance · ficção popular · comédia',
+      desc: 'Romance e ficção popular de tom mais leve e acessível. Histórias de amor, amizade e autoconhecimento para o grande público. Complemento da Companhia em um segmento de altíssimo volume.',
+    },
+    'Suma': {
+      tag: 'thriller · crime · ficção comercial',
+      desc: 'Ficção comercial de grande apelo: thriller, crime e suspense para o leitor de entretenimento. Narrativas de ritmo acelerado com fórmula provada de mercado. Compete diretamente com os selos de bestseller.',
+    },
+    'Claro Enigma': {
+      tag: 'poesia · literatura experimental · ensaio',
+      desc: 'Espaço para a poesia, o ensaio literário e a ficção experimental dentro do grupo. Nicho de alta fidelidade com leitor intelectualmente engajado. Nome que referencia o poema de Drummond.',
+    },
+    'Clássicos Zahar': {
+      tag: 'clássicos · filosofia · ciências humanas',
+      desc: 'Reedições de clássicos do catálogo Zahar em formatos acessíveis. Obras fundamentais das ciências humanas disponíveis a novos leitores. Sustenta a relevância do backlist intelectual do grupo.',
+    },
+    'Boa Companhia': {
+      tag: 'contos · antologias · ficção curta',
+      desc: 'Antologias e coletâneas de contos selecionados com cuidado curatorial. Espaço para a ficção breve de qualidade dentro do catálogo do grupo. Leitor fiel e engajado com forte perfil literário.',
+    },
+    'Brinque-Book': {
+      tag: 'livros interativos · bebês · estimulação',
+      desc: 'Livros interativos e de estimulação para bebês e crianças pequenas. Formatos com texturas, pop-ups e elementos sensoriais para o desenvolvimento infantil. O primeiro contato da criança com o livro como objeto de descoberta.',
+    },
+    'Companhia de Mesa': {
+      tag: 'gastronomia · culinária · lifestyle',
+      desc: 'Livros de gastronomia, culinária e cultura alimentar com produção editorial de alto nível. Receitas e narrativas sobre comida para o leitor que vê a mesa como cultura. Segmento de nicho com leitor fiel e poder aquisitivo elevado.',
+    },
+    'Fontanar': {
+      tag: 'ficção espanhola · lifestyle · não-ficção',
+      desc: 'Importado do catálogo espanhol do grupo, com ficção e não-ficção de língua ibérica. Títulos selecionados de editoras parceiras da Península Ibérica. Complementa o catálogo de literatura em espanhol da Alfaguara.',
+    },
+    'Pequena Zahar': {
+      tag: 'infantil · formação · primeiros leitores',
+      desc: 'Versão infantil do rigor editorial da Zahar, voltada a temas de formação e descoberta. Livros para crianças e pré-adolescentes com curadoria intelectualmente atenta. A ponte entre o universo da Zahar e o leitor em formação.',
+    },
+    'Reviravolta': {
+      tag: 'ficção · novidades · novos autores',
+      desc: 'Espaço para novas vozes e apostas editoriais do grupo. Ficção contemporânea de autores emergentes com potencial de crescimento. Um laboratório editorial dentro do portfólio do Grupo Schwarcz.',
+    },
+    'Cia das Letras': {
+      tag: 'literatura · ficção · curadoria',
+      desc: 'Variante do catálogo da Companhia das Letras para títulos específicos. Mantém o mesmo padrão curatorial do selo principal do grupo. Parte integrante do ecossistema literário de prestígio da casa.',
+    },
+  };
+
+  // ── Logos oficiais (companhiadasletras.com.br) ─────────────────────────────
+  const SELO_LOGOS = {
+    'Alfaguara':             'https://www.companhiadasletras.com.br/resources/img/selo_alfaguara2.svg',
+    'Boa Companhia':         'https://www.companhiadasletras.com.br/resources/img/selo_boaComp.svg',
+    'Bloom Brasil':          'https://www.companhiadasletras.com.br/resources/img/selo_bloom.png',
+    'Brinque-Book':          'https://www.companhiadasletras.com.br/resources/img/selo_brinquebook.svg',
+    'Claro Enigma':          'https://www.companhiadasletras.com.br/resources/img/selo_claroEnigma.svg',
+    'Clássicos Zahar':       'https://www.companhiadasletras.com.br/resources/img/selo_classicos-zahar.png',
+    'Companhia das Letras':  'https://www.companhiadasletras.com.br/resources/img/selo_companhiaL.svg',
+    'Companhia das Letrinhas':'https://www.companhiadasletras.com.br/resources/img/selo_companhiaLetrinhas.svg',
+    'Companhia de Bolso':    'https://www.companhiadasletras.com.br/resources/img/selo_companhiaBolso.svg',
+    'Companhia de Mesa':     'https://www.companhiadasletras.com.br/resources/img/selo_companhiaMesa.svg',
+    'Escarlate':             'https://www.companhiadasletras.com.br/resources/img/selo_escarlate2.svg',
+    'Fontanar':              'https://www.companhiadasletras.com.br/resources/img/selo_fontanar2.svg',
+    'Editora JBC':           'https://www.companhiadasletras.com.br/resources/img/selo_jbc.png',
+    'Objetiva':              'https://www.companhiadasletras.com.br/resources/img/selo_objetiva.svg',
+    'Paralela':              'https://www.companhiadasletras.com.br/resources/img/selo_paralela.svg',
+    'Penguin-Companhia':     'https://www.companhiadasletras.com.br/resources/img/selo_companhia2.svg',
+    'Pequena Zahar':         'https://www.companhiadasletras.com.br/resources/img/selo_pequena-zahar.png',
+    'Portfolio-Penguin':     'https://www.companhiadasletras.com.br/resources/img/selo_portfolio.svg',
+    'Quadrinhos na Cia':     'https://www.companhiadasletras.com.br/resources/img/selo_quadrinhosCia.svg',
+    'Reviravolta':           'https://www.companhiadasletras.com.br/resources/img/selo_reviravolta.svg',
+    'Seguinte':              'https://www.companhiadasletras.com.br/resources/img/selo_seguinte.png',
+    'Suma':                  'https://www.companhiadasletras.com.br/resources/img/selo_suma.svg',
+    'Zahar':                 'https://www.companhiadasletras.com.br/resources/img/selo_zahar.svg',
+    'Cia das Letras':        null,
+  };
+
+  // ── Instagram por selo ─────────────────────────────────────────────────────
+  const SELO_INSTAGRAM = {
+    'Companhia das Letras':   'companhiadasletras',
+    'Zahar':                  'editorazahar',
+    'Objetiva':               'editora_objetiva',
+    'Seguinte':               'editoraseguinteoficial',
+    'Alfaguara':              'editora_alfaguara',
+    'Editora JBC':            'editorajbc',
+    'Escarlate':              null,
+    'Bloom Brasil':           'editorabloombrasil',
+    'Quadrinhos na Cia':      'quadrinhosnacia',
+    'Companhia das Letrinhas':'companhiadasletrinhas',
+    'Brinque-Book':           'brinquebook',
+    'Suma':                   'editorasuma',
+    'Paralela':               null,
+    'Portfolio-Penguin':      null,
+    'Penguin-Companhia':      'penguincompanhia',
+    'Claro Enigma':           null,
+    'Clássicos Zahar':        null,
+    'Boa Companhia':          null,
+    'Companhia de Bolso':     null,
+    'Companhia de Mesa':      null,
+    'Fontanar':               null,
+    'Pequena Zahar':          'pequenazahar',
+    'Reviravolta':            null,
+    'Cia das Letras':         null,
+  };
+
+  // ── Dados do Instagram (extraídos em abr/2026) ─────────────────────────────
+  const SELO_IG_STATS = {
+    'companhiadasletras':     { seg: '839K', posts: '13K',   bio: 'A maior editora literária do Brasil.' },
+    'editorazahar':           { seg: '225K', posts: '4.636', bio: 'Zahar é pioneira na publicação de livros de ciências humanas e sociais no Brasil.' },
+    'editora_objetiva':       { seg: '88K',  posts: null,    bio: 'Não-ficção de grande alcance para o leitor curioso.' },
+    'editoraseguinteoficial': { seg: '281K', posts: null,    bio: 'Literatura orgulhosamente jovem.' },
+    'editora_alfaguara':      { seg: '83K',  posts: null,    bio: 'O melhor da ficção em língua espanhola.' },
+    'editorajbc':             { seg: '109K', posts: null,    bio: 'Mangás, HQs e livros de cultura japonesa no Brasil.' },
+    'editorabloombrasil':     { seg: '30K',  posts: null,    bio: 'Romance contemporâneo, mundos mágicos e histórias que aquecem o coração.' },
+    'quadrinhosnacia':        { seg: '42K',  posts: '1.332', bio: 'Quadrinhos e graphic novels de autor.' },
+    'companhiadasletrinhas':  { seg: '138K', posts: '3.459', bio: 'Literatura infantil de qualidade.' },
+    'brinquebook':            { seg: null,   posts: null,    bio: null },
+    'editorasuma':            { seg: '173K', posts: null,    bio: 'Ficção especulativa e entretenimento de qualidade.' },
+    'penguincompanhia':       { seg: null,   posts: null,    bio: null },
+    'pequenazahar':           { seg: null,   posts: null,    bio: null },
+  };
+
+  // ── Títulos de referência por selo (ranking de vendas 2024–2025) ──────────
+  const HITS = {
+    'Companhia das Letras': [
+      'Sapiens — Yuval Noah Harari',
+      'Homo Deus — Yuval Noah Harari',
+      '21 lições para o século 21 — Yuval Noah Harari',
+      'Educação — Tara Westover',
+      'Enterre meus ossos — Tommy Orange',
+      'O leopardo — Giuseppe Tomasi di Lampedusa',
+      'Breve história de sete assassinatos — Marlon James',
+      'Lincoln no Bardo — George Saunders',
+      'A balada de pássaros e serpentes — Suzanne Collins',
+      'O conto da aia — Margaret Atwood',
+    ],
+    'Zahar': [
+      'Interpretação dos sonhos — Sigmund Freud',
+      'Vigiar e punir — Michel Foucault',
+      'A distinção — Pierre Bourdieu',
+      'Escritos — Jacques Lacan',
+      'Mitológicas — Claude Lévi-Strauss',
+      'O ser e o nada — Jean-Paul Sartre',
+      'Tristes trópicos — Claude Lévi-Strauss',
+      'A condição humana — Hannah Arendt',
+      'A dialética do esclarecimento — Adorno & Horkheimer',
+      'Totem e tabu — Sigmund Freud',
+    ],
+    'Objetiva': [
+      'O poder do hábito — Charles Duhigg',
+      'Mindset — Carol Dweck',
+      'Rápido e devagar — Daniel Kahneman',
+      'Antifrágil — Nassim Taleb',
+      'O ponto da virada — Malcolm Gladwell',
+      'Fora de série — Malcolm Gladwell',
+      'Flash — Malcolm Gladwell',
+      'A era do capital — Eric Hobsbawm',
+      'A era das revoluções — Eric Hobsbawm',
+      'O jogo da imitação — Andrew Hodges',
+    ],
+    'Alfaguara': [
+      'Cem anos de solidão — Gabriel García Márquez',
+      'Amor nos tempos de cólera — Gabriel García Márquez',
+      'A festa do bode — Mario Vargas Llosa',
+      'A casa verde — Mario Vargas Llosa',
+      'A casa dos espíritos — Isabel Allende',
+      'Eva Luna — Isabel Allende',
+      'Conversa na catedral — Mario Vargas Llosa',
+      'O general em seu labirinto — Gabriel García Márquez',
+      'Os cadernos de Don Rigoberto — Mario Vargas Llosa',
+      'Paula — Isabel Allende',
+    ],
+    'Seguinte': [
+      'A seleção — Kiera Cass',
+      'Heartstopper — Alice Oseman',
+      'A rainha vermelha — Victoria Aveyard',
+      'Conectadas — Rainbow Rowell',
+      'Defy Me — Tahereh Mafi',
+      'Ignite Me — Tahereh Mafi',
+      'Shatter Me — Tahereh Mafi',
+      'An Ember in the Ashes — Sabaa Tahir',
+      'Six of Crows — Leigh Bardugo',
+      'O ladrão de raios — Rick Riordan',
+    ],
+    'Companhia das Letrinhas': [
+      'O pequeno príncipe — Antoine de Saint-Exupéry',
+      'O menino do pijama listrado — John Boyne',
+      'Diário de um banana — Jeff Kinney',
+      'Extraordinário — R. J. Palacio',
+      'A menina que roubava livros — Markus Zusak',
+      'Stargirl — Jerry Spinelli',
+      'Como eu era antes de você — Jojo Moyes',
+      'O alquimista — Paulo Coelho',
+      'Tudo que eu nunca disse — Celeste Ng',
+      'Extraordinário: A escolha de August — R. J. Palacio',
+    ],
+    'Companhia de Bolso': [
+      'A metamorfose — Franz Kafka',
+      'O processo — Franz Kafka',
+      'Crime e castigo — Dostoiévski',
+      'O idiota — Dostoiévski',
+      'Dom Casmurro — Machado de Assis',
+      'Memórias póstumas de Brás Cubas — Machado de Assis',
+      'A hora da estrela — Clarice Lispector',
+      'Perto do coração selvagem — Clarice Lispector',
+      'Vidas secas — Graciliano Ramos',
+      'São Bernardo — Graciliano Ramos',
+    ],
+    'Penguin-Companhia': [
+      'Moby Dick — Herman Melville',
+      'Dom Quixote — Cervantes',
+      'Guerra e paz — Tolstói',
+      'Anna Kariênina — Tolstói',
+      'O morro dos ventos uivantes — Emily Brontë',
+      'Jane Eyre — Charlotte Brontë',
+      'Orgulho e preconceito — Jane Austen',
+      'O grande Gatsby — F. Scott Fitzgerald',
+      'Ulisses — James Joyce',
+      'Em busca do tempo perdido — Marcel Proust',
+    ],
+    'Portfolio-Penguin': [
+      'De zero a um — Peter Thiel',
+      'Os segredos da mente milionária — T. Harv Eker',
+      'A startup enxuta — Eric Ries',
+      'Inovação e empreendedorismo — Peter Drucker',
+      'A arte da guerra — Sun Tzu',
+      'Liderança — Rudolph Giuliani',
+      'O jeito Warren Buffett de investir — Robert Hagstrom',
+      'Freakonomics — Levitt & Dubner',
+      'Pense e enriqueça — Napoleon Hill',
+      'Como fazer amigos e influenciar pessoas — Dale Carnegie',
+    ],
+    'Paralela': [
+      'O código da obesidade — Jason Fung',
+      'O guia completo do jejum — Jason Fung',
+      'A mente acima do metabolismo — Casey Means',
+      'Livros para toda a vida — Stanislas Dehaene',
+      'O poder do sono — Matthew Walker',
+      'Longevidade — David Sinclair',
+      'Não morra de diabetes — Jason Fung',
+      'O cérebro de Buda — Rick Hanson',
+      'A cura pela dieta — Terry Wahls',
+      'Cuide da sua mente — Rangan Chatterjee',
+    ],
+    'Editora JBC': [
+      'Dragon Ball — Akira Toriyama',
+      'Naruto — Masashi Kishimoto',
+      'Bleach — Tite Kubo',
+      'Cavaleiros do Zodíaco — Masami Kurumada',
+      'Fullmetal Alchemist — Hiromu Arakawa',
+      'Death Note — Tsugumi Ohba',
+      'One Punch Man — ONE & Yusuke Murata',
+      'Tokyo Ghoul — Sui Ishida',
+      'Sword Art Online — Reki Kawahara',
+      'No Game No Life — Yuu Kamiya',
+    ],
+    'Quadrinhos na Cia': [
+      'Maus — Art Spiegelman',
+      'Persépolis — Marjane Satrapi',
+      'Watchmen — Alan Moore & Dave Gibbons',
+      'Saga — Brian K. Vaughan & Fiona Staples',
+      'Fun Home — Alison Bechdel',
+      'Blankets — Craig Thompson',
+      'Sandman — Neil Gaiman',
+      'V de Vingança — Alan Moore',
+      'O incrível Hulk — Peter David',
+      'Noites de seresta — Laerte',
+    ],
+    'Escarlate': [
+      'A court of thorns and roses — Sarah J. Maas',
+      'From blood and ash — Jennifer L. Armentrout',
+      'The cruel prince — Holly Black',
+      'King of wrath — Ana Huang',
+      'Haunting Adeline — H. D. Carlton',
+      'Twisted love — Ana Huang',
+      'Icebreaker — Hannah Grace',
+      'It ends with us — Colleen Hoover',
+      'Powerless — Lauren Roberts',
+      'A touch of darkness — Scarlett St. Clair',
+    ],
+    'Bloom Brasil': [
+      'Beach read — Emily Henry',
+      'People we meet on vacation — Emily Henry',
+      'Book lovers — Emily Henry',
+      'Happy place — Emily Henry',
+      'Funny story — Emily Henry',
+      'The hating game — Sally Thorne',
+      'One last stop — Casey McQuiston',
+      'Red, white & royal blue — Casey McQuiston',
+      'The kiss quotient — Helen Hoang',
+      'In a holidaze — Christina Lauren',
+    ],
+    'Suma': [
+      'It — Stephen King',
+      'O iluminado — Stephen King',
+      'O instituto — Stephen King',
+      'Billy Summers — Stephen King',
+      'Game of thrones — George R. R. Martin',
+      'Fogo e sangue — George R. R. Martin',
+      'A dança dos dragões — George R. R. Martin',
+      'Robin Hobb — Assassino real',
+      'Fundação — Isaac Asimov',
+      'Duna — Frank Herbert',
+    ],
+    'Claro Enigma': [
+      'A rosa do povo — Carlos Drummond de Andrade',
+      'Claro enigma — Carlos Drummond de Andrade',
+      'Poesia completa — Ferreira Gullar',
+      'Invenção de Orfeu — Jorge de Lima',
+      'Antologia poética — Vinicius de Moraes',
+      'Libertinagem — Manuel Bandeira',
+      'Poesia reunida — Adélia Prado',
+      'Escolha o seu sonho — Affonso Romano de Sant\'Anna',
+      'O guardador de rebanhos — Fernando Pessoa',
+      'Mensagem — Fernando Pessoa',
+    ],
+    'Clássicos Zahar': [
+      'O mal-estar na cultura — Sigmund Freud',
+      'Psicologia das massas — Sigmund Freud',
+      'O futuro de uma ilusão — Sigmund Freud',
+      'A filosofia no boudoir — Marquês de Sade',
+      'O príncipe — Maquiavel',
+      'A república — Platão',
+      'Ética a Nicômaco — Aristóteles',
+      'Crítica da razão pura — Kant',
+      'Fenomenologia do espírito — Hegel',
+      'O capital — Karl Marx',
+    ],
+    'Boa Companhia': [
+      'Os melhores contos brasileiros de sempre',
+      'Contos de Kafka',
+      'Contos de Borges',
+      'Histórias extraordinárias — Edgar Allan Poe',
+      'Contos de Tchekhov',
+      'Ficções — Jorge Luis Borges',
+      'Primeiras estórias — Guimarães Rosa',
+      'Os contos de Fada de Grimm',
+      'Contos de fadas — Hans Christian Andersen',
+      'A dama com o cachorrinho — Anton Tchekhov',
+    ],
+    'Brinque-Book': [
+      'O ratinho, o morango e a grande espreguiçadeira — Jill Murphy',
+      'Boa noite, gorila — Peggy Rathmann',
+      'Vamos caçar um urso — Michael Rosen',
+      'Elmer — David McKee',
+      'O livro sem figuras — B. J. Novak',
+      'Onde vivem os monstros — Maurice Sendak',
+      'Adivinha o quanto eu te amo — Sam McBratney',
+      'Livro da selva — Kipling',
+      'Cinco patinhos — Pamela Paparone',
+      'A lagartinha muito comilona — Eric Carle',
+    ],
+    'Companhia de Mesa': [
+      'A cozinha brasileira — Câmara Cascudo',
+      'Dona Benta: comer bem — Monteiro Lobato',
+      'Larousse gastronomique',
+      'A enciclopédia da gastronomia — Escoffier',
+      'Receitas da minha avó italiana — Benedetta Parodi',
+      'Ottolenghi: o livro de vegetais — Yotam Ottolenghi',
+      'Salt, fat, acid, heat — Samin Nosrat',
+      'Tartine — Chad Robertson',
+      'Cozinha brasileira — Alex Atala',
+      'A arte de cozinhar — Auguste Escoffier',
+    ],
+    'Fontanar': [
+      'La sombra del viento — Carlos Ruiz Zafón',
+      'El laberinto de los espíritus — Carlos Ruiz Zafón',
+      'El juego del ángel — Carlos Ruiz Zafón',
+      'Los pilares de la tierra — Ken Follett',
+      'El nombre de la rosa — Umberto Eco',
+      'La catedral del mar — Ildefonso Falcones',
+      'Patria — Fernando Aramburu',
+      'El tiempo entre costuras — María Dueñas',
+      'Las correcciones — Jonathan Franzen',
+      'Una columna de fuego — Ken Follett',
+    ],
+    'Pequena Zahar': [
+      'Como nasce um bebê — Agnès Vandewiele',
+      'O que é filosofia para crianças — Oscar Brenifier',
+      'Quem fez o mundo? — Perguntas e respostas',
+      'O livro das religiões — Usborne',
+      'Ciência para todos — DK',
+      'O pequeno livro da filosofia — DK',
+      'Filosofia para jovens — DK',
+      'Pensadores que mudaram o mundo — DK',
+      'O livro dos inventos — DK',
+      'Guia de filosofia para jovens — Nathalie Frisque',
+    ],
+    'Reviravolta': [
+      'Torto arado — Itamar Vieira Junior',
+      'Mormaço — Marina Colasanti',
+      'A resistência — Julián Fuks',
+      'O céu dos suicidas — Ricardo Lísias',
+      'Diário da queda — Michel Laub',
+      'A chave de casa — Tatiana Salem Levy',
+      'Mar azul — Paloma Vidal',
+      'Nada se perde — Carola Saavedra',
+      'Azul corvo — Adriana Lisboa',
+      'O filho eterno — Cristovão Tezza',
+    ],
+    'Cia das Letras': [
+      'Cidade de Deus — Paulo Lins',
+      'Estação Carandiru — Drauzio Varella',
+      'O alienista — Machado de Assis',
+      'Quarto de despejo — Carolina Maria de Jesus',
+      'Grande sertão: veredas — Guimarães Rosa',
+      'Capitães da areia — Jorge Amado',
+      'Gabriela, cravo e canela — Jorge Amado',
+      'Macunaíma — Mário de Andrade',
+      'Iracema — José de Alencar',
+      'O cortiço — Aluísio Azevedo',
+    ],
+  };
+
+  async function loadSelo(selo, idx, grid) {
+    try {
+      const hoje      = new Date().toISOString().slice(0,10);
+      const seisAtras = new Date(); seisAtras.setMonth(seisAtras.getMonth() - 6);
+      const seisAtrasStr = seisAtras.toISOString().slice(0,10);
+
+      const [livrosRes, recentRes, lancRes, prevRes, catRes] = await Promise.all([
+        fetch(
+          `${API}/items/biblioteca?limit=12&fields=id,capa_url,titulo,autor,data_publicacao` +
+          `&${fq({ _and: [{ editora: { _eq: selo.nome_display } }, { capa_url: { _nnull: true } }] })}&sort=-data_publicacao`
+        ),
+        fetch(
+          `${API}/items/biblioteca?limit=1&fields=titulo,autor,data_publicacao` +
+          `&${fq({ editora: { _eq: selo.nome_display } })}&sort=-data_publicacao`
+        ),
+        fetch(
+          `${API}/items/biblioteca?limit=0&meta=filter_count` +
+          `&${fq({ _and: [{ editora: { _eq: selo.nome_display } }, { data_publicacao: { _gte: seisAtrasStr, _lte: hoje } }] })}`
+        ),
+        fetch(
+          `${API}/items/biblioteca?limit=0&meta=filter_count` +
+          `&${fq({ _and: [{ editora: { _eq: selo.nome_display } }, { data_publicacao: { _gt: hoje } }] })}`
+        ),
+        fetch(
+          `${API}/items/biblioteca?limit=0&meta=filter_count` +
+          `&${fq({ editora: { _eq: selo.nome_display } })}`
+        )
+      ]);
+
+      const livros   = (await livrosRes.json()).data || [];
+      const recente  = ((await recentRes.json()).data || [])[0];
+      const nLanc    = (await lancRes.json()).meta?.filter_count || 0;
+      const nPrev    = (await prevRes.json()).meta?.filter_count || 0;
+      const nCatalog = (await catRes.json()).meta?.filter_count || 0;
+
+      const info     = SELO_INFO[selo.nome_display] || {};
+      const hits     = HITS[selo.nome_display] || [];
+      const logoUrl  = SELO_LOGOS[selo.nome_display] || null;
+      const igHandle = SELO_INSTAGRAM[selo.nome_display] || null;
+
+      const tagHtml = info.tag
+        ? `<div class="selo-tag">${esc(info.tag)}</div>`
+        : '';
+
+      const descHtml = info.desc
+        ? `<div class="selo-desc">${esc(info.desc)}</div>`
+        : '';
+
+      const coversHtml = livros.length
+        ? livros.map(b =>
+            `<div class="mini-cover" onclick="openBookModal(${b.id},'${esc(selo.nome_display)}')"
+                  title="${esc(b.titulo)}${b.autor ? ' · ' + esc(b.autor) : ''}">
+              ${b.capa_url
+                ? `<img src="${esc(b.capa_url)}" alt="${esc(b.titulo)}"
+                       onload="this.classList.add('loaded')"
+                       onerror="this.parentElement.innerHTML='<div class=mini-cover-placeholder>·</div>'">`
+                : '<div class="mini-cover-placeholder">·</div>'
+              }
+            </div>`
+          ).join('')
+        : '<div style="color:var(--muted);font-size:.8rem;font-style:italic">sem capas disponíveis</div>';
+
+      const hitsHtml = hits.length
+        ? `<div class="selo-hits">
+            <div class="selo-hits-label">títulos de referência</div>
+            ${hits.map(h => {
+              const titleQ = h.split(' — ')[0].trim();
+              return `<div class="hit-row"
+                data-title="${esc(titleQ)}" data-selo="${esc(selo.nome_display)}"
+                onmouseenter="hitEnter(event)" onmouseleave="hitLeave()" onclick="hitClick(event)">· ${esc(h)}</div>`;
+            }).join('')}
+           </div>`
+        : '';
+
+      const recenteHtml = recente
+        ? `<div class="selo-recent">
+            mais recente: <strong>${esc(recente.titulo)}</strong>
+            ${recente.autor ? ` · ${esc(recente.autor)}` : ''}
+            ${recente.data_publicacao ? ` · ${new Date(recente.data_publicacao + 'T12:00:00').toLocaleDateString('pt-BR', {month:'short', year:'numeric'})}` : ''}
+           </div>`
+        : '';
+
+      const logoHtml = logoUrl
+        ? `<img class="selo-logo" src="${esc(logoUrl)}" alt="${esc(selo.nome_display)}"
+               onerror="this.style.display='none'">`
+        : '';
+
+      const igStats = igHandle ? (SELO_IG_STATS[igHandle] || null) : null;
+      const igSvg = `<svg class="ig-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>`;
+      const igHtml = igHandle
+        ? `<div class="ig-block">
+            ${igSvg}
+            <div class="ig-body">
+              <a class="ig-handle-link" href="https://instagram.com/${esc(igHandle)}" target="_blank" rel="noopener">@${esc(igHandle)}</a>
+              ${igStats ? `<div class="ig-stats">
+                ${igStats.seg ? `<span class="ig-stat"><strong>${esc(igStats.seg)}</strong> seguidores</span>` : ''}
+                ${igStats.seg && igStats.posts ? `<span class="ig-stat-sep">·</span>` : ''}
+                ${igStats.posts ? `<span class="ig-stat"><strong>${esc(igStats.posts)}</strong> posts</span>` : ''}
+              </div>
+              ${igStats.bio ? `<div class="ig-bio">"${esc(igStats.bio)}"</div>` : ''}` : ''}
+            </div>
+           </div>`
+        : `<div class="ig-block ig-block-vazio">
+            ${igSvg}
+            <div class="ig-body">
+              <span class="ig-sem-conta">sem instagram próprio</span>
+              <div class="ig-stats" style="margin-top:4px">
+                <span class="ig-stat">comunicação via <a class="ig-handle-link" href="https://instagram.com/companhiadasletras" target="_blank" rel="noopener" style="font-size:0.72rem;font-weight:normal">@companhiadasletras</a></span>
+              </div>
+            </div>
+           </div>`;
+
+      const statsHtml = `
+        <div class="selo-stats">
+          <div class="selo-stat"><strong>${fmt(nCatalog)}</strong> em catálogo</div>
+          <div class="selo-stat"><strong>${fmt(nLanc)}</strong> últimos 6 meses</div>
+          <div class="selo-stat accent"><strong>${fmt(nPrev)}</strong> em pré-venda</div>
+        </div>`;
+
+      const ativoFlag = nLanc > 0 || nPrev > 0;
+      grid.children[idx].outerHTML = `
+        <div class="selo-card" data-nome="${esc(selo.nome_display)}" data-catalog="${nCatalog}" data-lanc="${nLanc}" data-prev="${nPrev}" data-seg="${igStats ? parseSeg(igStats.seg || '0') : 0}">
+          ${ativoFlag ? '' : '<span class="tag-inativo">sem lançamentos</span>'}
+          ${logoHtml}
+          <div class="selo-header">
+            <div>
+              <div class="selo-nome">${esc(selo.nome_display)}</div>
+              ${tagHtml}
+            </div>
+            ${statsHtml}
+          </div>
+          ${igHtml}
+          ${descHtml}
+          <div class="selo-covers">${coversHtml}</div>
+          ${hitsHtml}
+          ${recenteHtml}
+        </div>
+      `;
+    } catch(e) {
+      grid.children[idx].innerHTML =
+        `<div style="color:var(--muted);font-size:.8rem">${esc(selo.nome_display)} · erro ao carregar</div>`;
+    }
+  }
+
+  // ── Hover nos hits ────────────────────────────────────────────────────────
+  const _hitCache = {};
+  let _hitTimer   = null;
+
+  function hitEnter(e) {
+    clearTimeout(_hitTimer);
+    const el    = e.currentTarget;
+    const title = el.dataset.title;
+    const selo  = el.dataset.selo;
+    _hitTimer = setTimeout(() => _showHitTooltip(el, title, selo), 250);
+  }
+
+  function hitLeave() {
+    clearTimeout(_hitTimer);
+    document.getElementById('hit-tooltip').classList.remove('visible');
+  }
+
+  async function hitClick(e) {
+    const el    = e.currentTarget;
+    const title = el.dataset.title;
+    const selo  = el.dataset.selo;
+    const key   = selo + '|' + title;
+    // Garante que o cache está populado (pode não ter feito hover antes)
+    if (!(key in _hitCache)) await _showHitTooltip(el, title, selo);
+    const b = _hitCache[key];
+    if (b?.id) openBookModal(b.id, selo);
+  }
+
+  async function _showHitTooltip(el, titleQ, seloNome) {
+    const key = seloNome + '|' + titleQ;
+    if (!(key in _hitCache)) {
+      try {
+        const r = await fetch(
+          `${API}/items/biblioteca?limit=1&fields=id,titulo,autor,capa_url,data_publicacao` +
+          `&${fq({ _and: [{ editora: { _eq: seloNome } }, { titulo: { _icontains: titleQ } }] })}`
+        );
+        _hitCache[key] = ((await r.json()).data || [])[0] || null;
+      } catch { _hitCache[key] = null; }
+    }
+    const b = _hitCache[key];
+    if (!b) return;
+
+    const tt = document.getElementById('hit-tooltip');
+    document.getElementById('hit-tooltip-img').src    = b.capa_url || '';
+    document.getElementById('hit-tooltip-title').textContent  = b.titulo || '';
+    document.getElementById('hit-tooltip-author').textContent = b.autor  || '';
+    document.getElementById('hit-tooltip-date').textContent   = b.data_publicacao
+      ? new Date(b.data_publicacao + 'T12:00:00').toLocaleDateString('pt-BR', {month:'long', year:'numeric'})
+      : '';
+
+    const rect = el.getBoundingClientRect();
+    const tipW  = 240;
+    const leftOk = rect.right + 12 + tipW < window.innerWidth;
+    tt.style.top  = `${Math.max(8, rect.top - 10)}px`;
+    tt.style.left = leftOk ? `${rect.right + 12}px` : `${rect.left - tipW - 12}px`;
+    tt.classList.add('visible');
+  }
+
+  // ── Modal de detalhe ───────────────────────────────────────────────────────
+  async function openBookModal(id, seloNome) {
+    const overlay = document.getElementById('book-overlay');
+    const inner   = document.getElementById('book-modal-inner');
+    inner.innerHTML = '<div class="book-modal-loading">carregando…</div>';
+    overlay.classList.add('open');
+
+    try {
+      const r = await fetch(`${API}/items/biblioteca/${id}?fields=titulo,autor,editora,capa_url,data_publicacao,isbn,sinopse`);
+      const b = (await r.json()).data || {};
+      const dateStr = b.data_publicacao
+        ? new Date(b.data_publicacao + 'T12:00:00').toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'})
+        : '';
+
+      inner.innerHTML = `
+        <div class="book-modal-cover">
+          ${b.capa_url
+            ? `<img src="${esc(b.capa_url)}" alt="${esc(b.titulo)}">`
+            : '<div class="book-modal-cover-placeholder">·</div>'
+          }
+        </div>
+        <div class="book-modal-info">
+          <div class="book-modal-selo">${esc(seloNome)}</div>
+          <div class="book-modal-title">${esc(b.titulo || '')}</div>
+          <div class="book-modal-author">${esc(b.autor || '')}</div>
+          <div class="book-modal-meta">
+            ${dateStr ? `<span class="book-modal-tag">${esc(dateStr)}</span>` : ''}
+            ${b.isbn  ? `<span class="book-modal-tag">ISBN ${esc(b.isbn)}</span>` : ''}
+          </div>
+          ${b.sinopse
+            ? `<div class="book-modal-sinopse">${b.sinopse.split('\n').filter(Boolean).slice(0,4).map(p => `<p>${esc(p)}</p>`).join('')}</div>`
+            : '<div class="book-modal-sinopse">sinopse não disponível</div>'
+          }
+        </div>
+      `;
+    } catch(e) {
+      inner.innerHTML = '<div class="book-modal-loading">erro ao carregar</div>';
+    }
+  }
+
+  function closeBookModal() {
+    document.getElementById('book-overlay').classList.remove('open');
+  }
+
+  document.getElementById('book-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('book-overlay')) closeBookModal();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeBookModal();
+  });
+
+  main();
+
+  // ── Modo claro / escuro ────────────────────────────────────────────────────
+  const ICONS = {
+    dark:  '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
+    light: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
+  };
+
+  function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+    document.getElementById('theme-icon').innerHTML = ICONS[theme === 'dark' ? 'dark' : 'light'];
+    document.getElementById('theme-label').textContent = theme === 'dark' ? 'modo claro' : 'modo escuro';
+    localStorage.setItem('schwarcz-theme', theme);
+  }
+
+  applyTheme(localStorage.getItem('schwarcz-theme') || 'dark');
+
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+  });
+</script>
+</body>
+</html>
