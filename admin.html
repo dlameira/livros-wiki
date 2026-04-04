@@ -679,12 +679,24 @@ function renderWorld() {
            ondragleave="onIslandLeave(event)"
            ondrop="onIslandDrop(event,${g.id})">
         <div class="grupo-island-header">
-          <span class="grupo-island-nome" style="color:${g.cor||'#888'}">${g.nome}</span>
+          <input class="grupo-island-nome-edit" value="${g.nome}"
+            style="color:${g.cor||'#888'};background:none;border:none;border-bottom:1px dashed transparent;outline:none;font-size:.73rem;text-transform:uppercase;letter-spacing:.07em;font-weight:bold;font-family:var(--font);cursor:text;min-width:60px;max-width:180px"
+            onclick="event.stopPropagation()"
+            onblur="saveGrupoNome(${g.id},this.value)"
+            onkeydown="if(event.key==='Enter')this.blur()"
+            onmouseover="this.style.borderBottomColor='var(--border)'"
+            onmouseout="if(document.activeElement!==this)this.style.borderBottomColor='transparent'"
+            onfocus="this.style.borderBottomColor='${g.cor||'#888'}'">
           <input class="grupo-island-adb" value="${g.adb_name_metabooks||''}"
             placeholder="razão social"
             onclick="event.stopPropagation()"
             onblur="saveGrupoAdb(${g.id},this.value)"
             onkeydown="if(event.key==='Enter')this.blur()">
+          <button onclick="event.stopPropagation();deleteGrupo(${g.id})"
+            style="background:none;border:none;color:#444;font-size:.9rem;cursor:pointer;padding:0 2px;line-height:1;margin-left:auto"
+            title="Excluir grupo"
+            onmouseover="this.style.color='var(--red)'"
+            onmouseout="this.style.color='#444'">×</button>
         </div>
         <div class="grupo-island-tags">${tags}</div>
       </div>`;
@@ -723,12 +735,40 @@ function seloTagHtml(s, standalone = false) {
   </div>`;
 }
 
+async function saveGrupoNome(id, val) {
+  const g = _grupos.find(g => g.id === id);
+  val = val.trim();
+  if (!g || !val || g.nome === val) return;
+  await PATCH(`/items/grupos_editoriais/${id}`, {nome: val});
+  g.nome = val;
+  renderWorld();
+  toast('Nome do grupo salvo');
+}
+
 async function saveGrupoAdb(id, val) {
   const g = _grupos.find(g => g.id === id);
   if (!g || g.adb_name_metabooks === val) return;
   await PATCH(`/items/grupos_editoriais/${id}`, {adb_name_metabooks: val||null});
   g.adb_name_metabooks = val||null;
   toast('Razão social salva');
+}
+
+async function deleteGrupo(id) {
+  const g = _grupos.find(g => g.id === id);
+  if (!g) return;
+  const selosG = _selos.filter(s => s.grupo?.id === id);
+  const msg = selosG.length
+    ? `Excluir "${g.nome}"? Os ${selosG.length} selos voltam para independente.`
+    : `Excluir "${g.nome}"?`;
+  if (!confirm(msg)) return;
+  if (selosG.length) {
+    await Promise.all(selosG.map(s => PATCH(`/items/selos/${s.id}`, {grupo: null})));
+    selosG.forEach(s => s.grupo = null);
+  }
+  await DELETE(`/items/grupos_editoriais/${id}`);
+  _grupos = _grupos.filter(g => g.id !== id);
+  renderWorld(); loadPublisherChecks();
+  toast(`Grupo "${g.nome}" excluído`);
 }
 
 // ── DESCOBERTAS ────────────────────────────────────────────────────────────────
@@ -773,7 +813,11 @@ function renderDescobertas() {
   listEl.innerHTML = items.map(s => {
     const cnt  = s.total_livros_mb ? `<span class="desc-count">${s.total_livros_mb.toLocaleString('pt-BR')} livros</span>` : '';
     const sel  = _descSelected.has(s.id) ? ' selected' : '';
-    return `<div class="descoberta-item${sel}" id="desc-${s.id}" onclick="toggleDescSel(${s.id}, event)">
+    return `<div class="descoberta-item${sel}" id="desc-${s.id}"
+      draggable="true"
+      ondragstart="onDescDragStart(event,${s.id})"
+      ondragend="onDragEnd()"
+      onclick="toggleDescSel(${s.id}, event)">
       <div class="desc-top">
         <span class="descoberta-nome" title="${s.publisher_mb_id||s.nome_display}">${s.nome_display}</span>
         ${cnt}
@@ -880,12 +924,21 @@ async function assignGrupoDescoberta(id, grupoId) {
 
 // ── DRAG & DROP ────────────────────────────────────────────────────────────────
 let _dragSeloId = null;
+let _dragIsDesc = false; // true when dragging from descobertas
 let _pendingA = null, _pendingB = null;
 
 function onDragStart(event, id) {
   _dragSeloId = id;
+  _dragIsDesc = false;
   event.dataTransfer.effectAllowed = 'move';
   setTimeout(() => document.getElementById(`stag-${id}`)?.classList.add('dragging'), 0);
+}
+
+function onDescDragStart(event, id) {
+  _dragSeloId = id;
+  _dragIsDesc = true;
+  event.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => document.getElementById(`desc-${id}`)?.classList.add('dragging'), 0);
 }
 
 function onDragEnd() {
@@ -906,15 +959,20 @@ function onIslandLeave(event) {
 async function onIslandDrop(event, grupoId) {
   event.preventDefault(); event.stopPropagation();
   const dragId = _dragSeloId;
+  const isDesc = _dragIsDesc;
   onDragEnd();
   if (!dragId) return;
   const s = _selos.find(s => s.id === dragId);
   const g = _grupos.find(g => g.id === grupoId);
-  if (!s || !g || s.grupo?.id === grupoId) return;
-  await PATCH(`/items/selos/${s.id}`, {grupo: grupoId});
+  if (!s || !g) return;
+  if (!isDesc && s.grupo?.id === grupoId) return;
+  // If from descobertas: activate + assign in one step
+  const patch = isDesc ? {ativo: true, grupo: grupoId} : {grupo: grupoId};
+  await PATCH(`/items/selos/${s.id}`, patch);
+  if (isDesc) s.ativo = true;
   s.grupo = g;
   renderWorld(); loadPublisherChecks();
-  toast(`${s.nome_display} → ${g.nome}`);
+  toast(`${s.nome_display} → ${g.nome}${isDesc ? ' (ativado)' : ''}`);
 }
 
 // Drop onto standalone tag → offer to create group
