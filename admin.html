@@ -914,18 +914,42 @@ async function deleteDescoberta(id) {
 
 async function assignGrupoDescoberta(id, grupoId) {
   const grupoNum = grupoId ? parseInt(grupoId) : null;
-  await PATCH(`/items/selos/${id}`, {grupo: grupoNum});
+  // When assigning a group, activate the selo at the same time (one step)
+  const patch = grupoNum ? {grupo: grupoNum, ativo: true} : {grupo: null};
+  await PATCH(`/items/selos/${id}`, patch);
   const s = _selos.find(s => s.id === id);
-  if (s) s.grupo = grupoNum ? (_grupos.find(g => g.id === grupoNum) || null) : null;
+  if (s) {
+    s.grupo = grupoNum ? (_grupos.find(g => g.id === grupoNum) || null) : null;
+    if (grupoNum) s.ativo = true;
+  }
   renderDescobertas();
   renderWorld();
-  toast('Grupo atribuído');
+  loadPublisherChecks();
+  toast(grupoNum ? 'Editora ativada e atribuída ao grupo' : 'Grupo removido');
 }
 
 // ── DRAG & DROP ────────────────────────────────────────────────────────────────
 let _dragSeloId = null;
 let _dragIsDesc = false; // true when dragging from descobertas
 let _pendingA = null, _pendingB = null;
+let _scrollRaf = null;
+
+// Auto-scroll when dragging near top or bottom edge
+document.addEventListener('dragover', e => {
+  const ZONE = 120, MAX_SPEED = 18;
+  const y = e.clientY, h = window.innerHeight;
+  let speed = 0;
+  if (y < ZONE)      speed = -MAX_SPEED * (1 - y / ZONE);
+  else if (y > h - ZONE) speed =  MAX_SPEED * (1 - (h - y) / ZONE);
+  if (_scrollRaf) cancelAnimationFrame(_scrollRaf);
+  if (speed !== 0) {
+    const step = () => { window.scrollBy(0, speed); _scrollRaf = requestAnimationFrame(step); };
+    _scrollRaf = requestAnimationFrame(step);
+  }
+});
+document.addEventListener('dragend', () => {
+  if (_scrollRaf) { cancelAnimationFrame(_scrollRaf); _scrollRaf = null; }
+});
 
 function onDragStart(event, id) {
   _dragSeloId = id;
