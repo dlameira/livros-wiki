@@ -633,6 +633,7 @@ function showTab(name, btn) {
 
 // ── EDITORAS ──────────────────────────────────────────────────────────────────
 let _grupos = [], _selos = [];
+let _livrosPorEditora = {}; // map: search_metabooks → count real da biblioteca
 const IND_NOME = 'Independente'; // grupo catch-all — publishers aqui ficam soltos
 
 function isIndependent(s) {
@@ -640,13 +641,19 @@ function isIndependent(s) {
 }
 
 async function loadSelos() {
-  const [gr, se] = await Promise.all([
+  const [gr, se, livrosGrp] = await Promise.all([
     GET('/items/grupos_editoriais?sort=nome&limit=100&fields=id,nome,cor,adb_name_metabooks'),
-    loadAllSelos()
+    loadAllSelos(),
+    GET('/items/biblioteca?groupBy[]=editora&aggregate[count]=id&limit=5000')
   ]);
   if (!gr || !se) return;
   _grupos = gr.data;
   _selos  = se;
+  // Build map editora_name → count
+  _livrosPorEditora = {};
+  for (const row of livrosGrp?.data || []) {
+    if (row.editora) _livrosPorEditora[row.editora] = parseInt(row.count?.id || 0);
+  }
   renderWorld();
 }
 
@@ -802,7 +809,8 @@ function renderDescobertas() {
   // Sort
   const sort = document.getElementById('desc-sort')?.value || 'count';
   if (sort === 'count') {
-    items.sort((a, b) => (b.total_livros_mb || 0) - (a.total_livros_mb || 0) || a.nome_display.localeCompare(b.nome_display));
+    const cnt = s => _livrosPorEditora[s.search_metabooks] || _livrosPorEditora[s.nome_display] || s.total_livros_mb || 0;
+    items.sort((a, b) => cnt(b) - cnt(a) || a.nome_display.localeCompare(b.nome_display));
   } else {
     items.sort((a, b) => a.nome_display.localeCompare(b.nome_display));
   }
@@ -811,7 +819,10 @@ function renderDescobertas() {
     .map(g => `<option value="${g.id}">${g.nome}</option>`).join('');
 
   listEl.innerHTML = items.map(s => {
-    const cnt  = s.total_livros_mb ? `<span class="desc-count">${s.total_livros_mb.toLocaleString('pt-BR')} livros</span>` : '';
+    const real = _livrosPorEditora[s.search_metabooks] || _livrosPorEditora[s.nome_display] || 0;
+    const cnt  = real
+      ? `<span class="desc-count" title="${real.toLocaleString('pt-BR')} livros no catálogo">${real.toLocaleString('pt-BR')}</span>`
+      : (s.total_livros_mb ? `<span class="desc-count" style="opacity:.5" title="estimativa Metabooks">${s.total_livros_mb.toLocaleString('pt-BR')}*</span>` : '');
     const sel  = _descSelected.has(s.id) ? ' selected' : '';
     return `<div class="descoberta-item${sel}" id="desc-${s.id}"
       draggable="true"
