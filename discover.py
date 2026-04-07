@@ -223,7 +223,7 @@ for info in to_add:
         'nome_display':     info['name'],
         'search_metabooks': info['name'],
         'publisher_mb_id':  info['mb_id'] or None,
-        'ativo':            False,
+        'curada':           False,
         'total_livros_mb':  info['total'],
     }
     r = directus('POST', '/items/selos', body)

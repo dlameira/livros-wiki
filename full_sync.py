@@ -161,17 +161,26 @@ print('\nCarregando selos...')
 selos_by_mbid = {}
 selos_by_name = {}
 
-resp = directus('GET', '/items/selos?fields=id,nome_display,search_metabooks,publisher_mb_id&limit=500')
-selos_data = (resp or {}).get('data', [])
-for s in selos_data:
-    sid = s['id']
-    if s.get('publisher_mb_id'):
-        selos_by_mbid[s['publisher_mb_id']] = sid
-    if s.get('nome_display'):
-        selos_by_name[normalize_pub(s['nome_display'])] = sid
-    if s.get('search_metabooks'):
-        selos_by_name[normalize_pub(s['search_metabooks'])] = sid
-print(f'  {len(selos_data):,} selos carregados')
+_selos_page = 1
+_selos_total = 0
+while True:
+    resp = directus('GET', f'/items/selos?fields=id,nome_display,search_metabooks,publisher_mb_id&limit=500&page={_selos_page}')
+    selos_data = (resp or {}).get('data', [])
+    if not selos_data:
+        break
+    for s in selos_data:
+        sid = s['id']
+        if s.get('publisher_mb_id'):
+            selos_by_mbid[s['publisher_mb_id']] = sid
+        if s.get('nome_display'):
+            selos_by_name[normalize_pub(s['nome_display'])] = sid
+        if s.get('search_metabooks'):
+            selos_by_name[normalize_pub(s['search_metabooks'])] = sid
+    _selos_total += len(selos_data)
+    if len(selos_data) < 500:
+        break
+    _selos_page += 1
+print(f'  {_selos_total:,} selos carregados')
 
 
 def get_or_create_selo(pub_name, mb_id):
@@ -187,7 +196,7 @@ def get_or_create_selo(pub_name, mb_id):
         'nome_display':     pub_name,
         'search_metabooks': pub_name,
         'publisher_mb_id':  mb_id or None,
-        'ativo':            False,
+        'curada':           False,
     })
     if r and r.get('data'):
         new_id = r['data']['id']

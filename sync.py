@@ -109,7 +109,7 @@ def parse_date(s):
 # ── 1. Carregar selos ativos do Directus ──────────────────────────────────────
 
 print('Carregando selos ativos do Directus...')
-_selos_resp = directus('GET', '/items/selos?filter[ativo][_eq]=true&fields=nome_display,search_metabooks&limit=200')
+_selos_resp = directus('GET', '/items/selos?filter[curada][_eq]=true&fields=nome_display,search_metabooks&limit=200')
 if not _selos_resp or not _selos_resp.get('data'):
     print('ERRO: não foi possível carregar selos do Directus', file=sys.stderr)
     sys.exit(1)
