@@ -1,18 +1,20 @@
 name: Sync Metabooks
 
 on:
+  schedule:
+    - cron: "0 6 * * 1"
   workflow_dispatch:
     inputs:
       months_back:
-        description: 'Meses para trás (0 = catálogo completo)'
-        default: '12'
+        description: "Meses para tras (0 = catalogo completo)"
+        default: "12"
         required: true
       publishers:
-        description: 'Editoras a sincronizar (vírgula-separadas, vazio = todas ativas)'
-        default: ''
+        description: "Editoras a sincronizar (virgula-separadas, vazio = todas ativas)"
+        default: ""
       sync_log_id:
-        description: 'ID do registro em sync_log (opcional)'
-        default: ''
+        description: "ID do registro em sync_log (opcional)"
+        default: ""
 
 jobs:
   sync:
@@ -24,7 +26,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Executar sync
         run: python sync.py
@@ -33,6 +35,6 @@ jobs:
           DIRECTUS_TOKEN:    ${{ secrets.DIRECTUS_TOKEN }}
           META_TOKEN:        ${{ secrets.META_TOKEN }}
           META_COVER_TOKEN:  ${{ secrets.META_COVER_TOKEN }}
-          MONTHS_BACK:       ${{ inputs.months_back }}
+          MONTHS_BACK:       ${{ inputs.months_back || '1' }}
           PUBLISHER_FILTER:  ${{ inputs.publishers }}
           SYNC_LOG_ID:       ${{ inputs.sync_log_id }}
